@@ -6,6 +6,18 @@ PawPal AI turns PawPal+, a rule-based pet-care scheduler, into an applied AI sys
 
 **Why it matters:** pet-care apps either make you fill in rigid forms or hand you generic chatbot advice. PawPal AI keeps the deterministic scheduler in charge of the facts (times, budgets, conflicts) and uses a constrained model only for what models are good at: understanding loose language and explaining a plan in a friendly way. It also refuses to play vet.
 
+## Screenshots
+
+| Dashboard (claymorphism UI) | Phone width |
+|---|---|
+| <img src="docs/screenshots/final/dashboard.png" alt="PawPal dashboard with pets, metrics, tasks and conflict warning" width="620"> | <img src="docs/screenshots/final/mobile.png" alt="PawPal on a phone-width screen" width="200"> |
+
+| Care Coach (RAG, live Groq answer) | Fix my day agent (verified, awaiting approval) |
+|---|---|
+| <img src="docs/screenshots/final/care_coach.jpg" alt="Care Coach answer with tips about Nibbles" width="420"> | <img src="docs/screenshots/final/fix_my_day.jpg" alt="Agent result: feeding moved 08:15 to 08:30, verification passed" width="420"> |
+
+The puppy, kitten and bunny illustrations are original inline SVGs drawn for this app.
+
 ## Base project
 
 This extends my **Module 2 project, PawPal+** ([original repo](https://github.com/Bhagyashree-Vaidya/ai110-module2show-pawpal-starter); its full commit history is preserved here). PawPal+ was a Streamlit app with an `Owner → Pet → Task` model and a `Scheduler` that sorts and filters tasks, detects overlapping tasks, handles daily/weekly recurrence, finds the next free slot, and builds a priority-first daily plan within the owner's time budget. It had no AI: every task went through a form, and the "explanation" was one fixed sentence.

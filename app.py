@@ -75,7 +75,8 @@ st.markdown(
             border: 1px solid #FFFFFFB3 !important; box-shadow: var(--pp-small-clay);
             transition: transform .14s ease, box-shadow .14s ease, background .14s ease;
         }
-        .stButton > button[kind="primary"], .stFormSubmitButton > button {
+        .stButton > button[kind="primary"], .stButton > button[data-testid="stBaseButton-primary"],
+        .stFormSubmitButton > button {
             background: linear-gradient(145deg, #FFD1A6, #FFAD68) !important; color: #63300F !important;
             box-shadow: 5px 6px 12px #B9682526, inset -4px -4px 8px #CA671B26, inset 4px 4px 8px #FFFFFF99;
         }
@@ -87,7 +88,7 @@ st.markdown(
                 inset 3px 3px 6px #59436826, inset -2px -2px 5px #FFFFFF99;
         }
         .stButton > button:focus-visible, .stFormSubmitButton > button:focus-visible,
-        .stTabs [data-baseweb="tab"]:focus-visible { outline: 3px solid var(--pp-blue); outline-offset: 3px; }
+        .stTabs :is([data-baseweb="tab"], [role="tab"]):focus-visible { outline: 3px solid var(--pp-blue); outline-offset: 3px; }
         .stButton > button:disabled, .stFormSubmitButton > button:disabled {
             opacity: .5; box-shadow: none; transform: none; cursor: not-allowed;
         }
@@ -110,20 +111,21 @@ st.markdown(
             letter-spacing: .045em; color: #505B78; white-space: normal; }
 
         /* Give pill shadows room inside the horizontal tab scroller. */
-        .stTabs [data-baseweb="tab-list"] { gap: .65rem; border-bottom: none; padding: .65rem .3rem 1rem; }
-        .stTabs [data-baseweb="tab"] {
+        .stTabs :is([data-baseweb="tab-list"], [role="tablist"]) { gap: .65rem; border-bottom: none; padding: .65rem .3rem 1rem; }
+        .stTabs :is([data-baseweb="tab"], [role="tab"]) {
             background: #EEF1FD; border-radius: 24px; padding: .65rem 1.1rem; min-height: 46px;
             font-weight: 800; color: var(--pp-blue-dark); border: 1px solid #FFFFFFB3;
             box-shadow: var(--pp-small-clay); transition: transform .14s ease, box-shadow .14s ease;
         }
-        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        .stTabs :is([data-baseweb="tab"], [role="tab"])[aria-selected="true"] {
             background: linear-gradient(145deg, #3F6EE3, var(--pp-blue)) !important; color: #fff !important;
             box-shadow: 4px 6px 12px #1F4FD82B, inset -3px -3px 7px #102D8A55, inset 3px 3px 6px #FFFFFF55;
         }
-        .stTabs [data-baseweb="tab"]:active {
+        .stTabs :is([data-baseweb="tab"], [role="tab"]):active {
             transform: translateY(2px); box-shadow: inset 2px 3px 6px #1B234026;
         }
-        .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] { display: none; }
+        .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"],
+        .stTabs [role="tablist"]::after, .stTabs .react-aria-SelectionIndicator { display: none; }
 
         section[data-testid="stSidebar"] { background: #FFF2E5; border-right: 1px solid #FFFFFF;
             box-shadow: 6px 0 22px #73533B08; }
@@ -145,6 +147,9 @@ st.markdown(
 
         /* Recessed clay fields keep their native input and keyboard behavior. */
         [data-testid="stTextInput"] [data-baseweb="input"],
+        [data-testid="stTextInputRootElement"], [data-testid="stTextAreaRootElement"],
+        [data-testid="stSelectbox"] div:has(> input[role="combobox"]),
+        [data-testid="stTimeInputTimeDisplay"],
         [data-testid="stNumberInputContainer"], [data-testid="stTextArea"] [data-baseweb="textarea"],
         div[data-baseweb="select"] > div, [data-testid="stTimeInput"] [data-baseweb="input"] {
             border-radius: 24px !important; background: #F4F5FD !important;
@@ -153,10 +158,15 @@ st.markdown(
             min-height: 46px;
         }
         .stTextInput input, .stNumberInput input, .stTextArea textarea,
-        [data-testid="stTimeInput"] input { background: transparent !important; color: var(--pp-ink); }
+        [data-testid="stSelectbox"] input, [data-testid="stTimeInput"] input {
+            background: transparent !important; color: var(--pp-ink);
+        }
         [data-baseweb="input"] > div { background: transparent; }
         [data-testid="stNumberInputContainer"] button { background: #E8EEFF; color: var(--pp-blue-dark); }
         [data-testid="stTextInput"] [data-baseweb="input"]:focus-within,
+        [data-testid="stTextInputRootElement"]:focus-within, [data-testid="stTextAreaRootElement"]:focus-within,
+        [data-testid="stSelectbox"] div:has(> input[role="combobox"]):focus-within,
+        [data-testid="stTimeInputTimeDisplay"]:focus-within,
         [data-testid="stNumberInputContainer"]:focus-within,
         [data-testid="stTextArea"] [data-baseweb="textarea"]:focus-within,
         div[data-baseweb="select"] > div:focus-within,
@@ -186,12 +196,12 @@ st.markdown(
                 margin: .75rem 0 -2.3rem auto; right: -1rem; bottom: 0; }
             .pp-hero-art::before { inset: 20px 5px -35px; }
             .pp-hero-art .pp-cat { bottom: 8px; }
-            .stTabs [data-baseweb="tab"] { padding: .6rem .8rem; white-space: nowrap; }
+            .stTabs :is([data-baseweb="tab"], [role="tab"]) { padding: .6rem .8rem; white-space: nowrap; }
             .pp-empty { padding: 1rem; gap: .85rem; align-items: flex-start; }
             .pp-empty svg { flex-basis: 64px; width: 64px; height: 78px; }
         }
         @media (prefers-reduced-motion: reduce) {
-            .stButton > button, .stFormSubmitButton > button, .stTabs [data-baseweb="tab"] {
+            .stButton > button, .stFormSubmitButton > button, .stTabs :is([data-baseweb="tab"], [role="tab"]) {
                 transition: none; transform: none !important;
             }
         }
