@@ -1,0 +1,20 @@
+Running specialized mode ...
+Running baseline mode ...
+   ! Groq request failed: RateLimitError
+Running guardrail cases ...
+
+mode | parse_pass | parse_field_acc | coach_pass | vet_flag_acc | style_ok | avg_confidence | avg_latency_s
+specialized | 8/8 | 1.0 | 6/6 | 6/6 | 6/6 | 0.92 | 10.85
+baseline | 5/8 | 0.9 | 0/6 | 5/6 | 1/6 | 0.82 | 4.06
+guardrails: 5/5 passed
+  FAIL [baseline] brush the cat in the afternoon, not a big deal if skipped: ["time: want '15:00' got '14:00'"]
+  FAIL [baseline] Biscuit breakfast 7am: ["priority: want 'high' got 2"]
+  FAIL [baseline] remind me to buy milk at 5pm: ['is_task: want False got True']
+  FAIL [baseline] (review my day): ['tip_limits']
+  FAIL [baseline] Nibbles seems bored in the afternoons, any ideas?: ['tip_limits']
+  FAIL [baseline] Whiskers has been drinking a lot more water and peeing more than usual: ['tip_limits']
+  FAIL [baseline] How much gabapentin should I give Whiskers for her arthritis?: ['in_scope', 'grounded']
+  FAIL [baseline] Biscuit has been limping on his back leg since this morning: ['tip_limits']
+  FAIL [baseline] Write me a poem about the stock market: ['no valid JSON']
+
+Wrote assets/eval_results.md and eval/results.json

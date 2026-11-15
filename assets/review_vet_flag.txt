@@ -1,0 +1,9 @@
+PawPal AI (specialized mode) for Jordan: Biscuit, Whiskers, Nibbles
+
+> review: Biscuit has been limping since this morning
+[ADVICE] Jordan, Biscuit's limping needs a vet visit; also adjust Whiskers feeding to 08:30 to avoid overlap.
+   - Move Whiskers feeding to 08:30-08:40 to resolve overlap.
+   - Keep Biscuit on a short leash and avoid strenuous activity until vet check.
+   - Ensure Nibbles has fresh hay and water; rabbits need constant access.
+   (vet_flag=True, confidence=0.90)
+   note: Vet flag raised - PawPal recommends contacting your veterinarian.
