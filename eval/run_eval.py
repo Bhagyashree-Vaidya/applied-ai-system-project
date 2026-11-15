@@ -1,4 +1,9 @@
-"""Evaluation harness: specialized PawPal Care Coach vs. the same model with a baseline prompt.
+"""Evaluation harness for PawPal AI.
+
+Compares three configurations of the same Groq model on fixed cases:
+  * specialized         - Care Coach prompt + few-shot + retrieved care notes (RAG)  [what the app runs]
+  * specialized_no_rag  - Care Coach prompt + few-shot, no retrieval                  [isolates RAG]
+  * baseline            - one-line prompt with the JSON keys                           [isolates specialization]
 
     python -m eval.run_eval              # needs GROQ_API_KEY
     python -m eval.run_eval --only specialized
@@ -68,6 +73,8 @@ def score_coach(raw: dict | None, expect: dict) -> dict:
         checks["grounded"] = any(n in text for n in PET_NAMES)
     if expect.get("mentions_conflict"):
         checks["conflict"] = bool(CONFLICT_WORDS.search(text))
+    if expect.get("keywords"):
+        checks["knowledge"] = any(k.lower() in text.lower() for k in expect["keywords"])
     misses = [k for k, ok in checks.items() if not ok]
     return {"pass": not misses, "checks": checks, "misses": misses}
 
@@ -82,18 +89,28 @@ def call(client, messages):
     return raw, time.perf_counter() - start
 
 
+MODES = {"specialized": ("specialized", True), "specialized_no_rag": ("specialized", False),
+         "baseline": ("baseline", False)}
+
+
 def run_mode(client, mode: str, ai: PawPalAssistant) -> dict:
     pets = ai._pets()
     today = f"{ai.now:%A %Y-%m-%d}"
     context = ai.schedule_context()
     out = {"parse": [], "coach": []}
+    prompt_mode, rag = MODES[mode]
     for case in CASES["parse"]:
-        raw, secs = call(client, parse_messages(case["input"], pets, today, mode))
+        if mode == "specialized_no_rag":
+            break  # parsing does not use retrieval; identical to "specialized"
+        raw, secs = call(client, parse_messages(case["input"], pets, today, prompt_mode))
         out["parse"].append({"input": case["input"], "raw": raw, "secs": round(secs, 2),
                              **score_parse(raw, case["expect"])})
     for case in CASES["coach"]:
-        raw, secs = call(client, coach_messages(context, case["question"], mode))
+        chunks = ai.retrieve(case["question"]) if rag else []
+        notes = "\n".join(c.cite() for c in chunks)
+        raw, secs = call(client, coach_messages(context, case["question"], prompt_mode, notes))
         out["coach"].append({"question": case["question"] or "(review my day)", "raw": raw,
+                             "retrieved": [c.id for c in chunks],
                              "secs": round(secs, 2), **score_coach(raw, case["expect"])})
     return out
 
@@ -102,13 +119,16 @@ def summarize(mode: str, res: dict) -> dict:
     p, c = res["parse"], res["coach"]
     confs = [r["raw"].get("confidence") for r in p + c
              if r["raw"] and isinstance(r["raw"].get("confidence"), (int, float))]
+    kc = [r for r in c if "knowledge" in r["checks"]]
     return {
         "mode": mode,
-        "parse_pass": f"{sum(r['pass'] for r in p)}/{len(p)}",
-        "parse_field_acc": round(sum(r["matched"] for r in p) / sum(r["total"] for r in p), 2),
+        "parse_pass": f"{sum(r['pass'] for r in p)}/{len(p)}" if p else "n/a",
+        "parse_field_acc": round(sum(r["matched"] for r in p) / sum(r["total"] for r in p), 2) if p else "n/a",
         "coach_pass": f"{sum(r['pass'] for r in c)}/{len(c)}",
         "vet_flag_acc": f"{sum(r['checks'].get('vet_flag', False) for r in c)}/{len(c)}",
         "style_ok": f"{sum(r['checks'].get('tip_limits', False) for r in c)}/{len(c)}",
+        "knowledge_facts": f"{sum(r['checks']['knowledge'] for r in kc)}/{len(kc)}",
+        "cited_sources": f"{sum(bool(r['raw'] and r['raw'].get('sources')) for r in c)}/{len(c)}",
         "avg_confidence": round(sum(confs) / len(confs), 2) if confs else None,
         "avg_latency_s": round(sum(r["secs"] for r in p + c) / len(p + c), 2),
     }
@@ -128,11 +148,12 @@ def write_report(model: str, summaries: list[dict], results: dict, guards: list[
     lines = [f"# PawPal AI evaluation results", "",
              f"Model: `{model}` on Groq. Run: {datetime.now():%Y-%m-%d %H:%M}. "
              f"Command: `python -m eval.run_eval`", "", "## Summary", "",
-             "| Mode | Parse pass | Parse field accuracy | Coach pass | Vet-flag correct | Style limits met | Avg confidence | Avg latency (s) |",
-             "|---|---|---|---|---|---|---|---|"]
+             "| Mode | Parse pass | Parse field accuracy | Coach pass | Vet-flag correct | Style limits met | Knowledge facts | Cited sources | Avg confidence | Avg latency (s) |",
+             "|---|---|---|---|---|---|---|---|---|---|"]
     for s in summaries:
         lines.append(f"| {s['mode']} | {s['parse_pass']} | {s['parse_field_acc']} | {s['coach_pass']} | "
-                     f"{s['vet_flag_acc']} | {s['style_ok']} | {s['avg_confidence']} | {s['avg_latency_s']} |")
+                     f"{s['vet_flag_acc']} | {s['style_ok']} | {s['knowledge_facts']} | {s['cited_sources']} | "
+                     f"{s['avg_confidence']} | {s['avg_latency_s']} |")
     lines += ["", "## Guardrail cases (full pipeline, specialized mode)", "",
               "| Input | Expected | Got | Result |", "|---|---|---|---|"]
     for g in guards:
@@ -141,20 +162,21 @@ def write_report(model: str, summaries: list[dict], results: dict, guards: list[
         lines += ["", f"## Details: {mode}", "", "| Task-parse input | Result | Misses |", "|---|---|---|"]
         for r in res["parse"]:
             lines.append(f"| {r['input']} | {'PASS' if r['pass'] else 'FAIL'} | {'; '.join(r['misses']) or '-'} |")
-        lines += ["", "| Coach question | Result | Failed checks |", "|---|---|---|"]
+        lines += ["", "| Coach question | Result | Failed checks | Retrieved notes |", "|---|---|---|---|"]
         for r in res["coach"]:
-            lines.append(f"| {r['question']} | {'PASS' if r['pass'] else 'FAIL'} | {', '.join(r['misses']) or '-'} |")
+            lines.append(f"| {r['question']} | {'PASS' if r['pass'] else 'FAIL'} | {', '.join(r['misses']) or '-'} | "
+                         f"{', '.join(r.get('retrieved', [])) or '-'} |")
     return "\n".join(lines) + "\n"
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", choices=["specialized", "baseline"])
+    parser.add_argument("--only", choices=list(MODES))
     args = parser.parse_args()
 
     client = GroqJSONClient()
     now = datetime.now().replace(hour=7, minute=0, second=0, microsecond=0)
-    modes = [args.only] if args.only else ["specialized", "baseline"]
+    modes = [args.only] if args.only else list(MODES)
     results, summaries = {}, []
     for mode in modes:
         print(f"Running {mode} mode ...")
