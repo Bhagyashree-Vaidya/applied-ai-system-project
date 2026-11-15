@@ -1,5 +1,7 @@
 # 🐾 PawPal AI — a specialized care coach for busy pet owners
 
+> **▶️ App:** run locally with `streamlit run app.py` → <http://localhost:8501> · **Live demo:** _add your Streamlit Community Cloud link here after deploying_
+
 PawPal AI turns PawPal+, a rule-based pet-care scheduler, into an applied AI system. Owners can type tasks in plain English ("Whiskers needs her kidney meds at 7:30pm every day") and get a daily review from a **specialized Care Coach** that knows their real schedule, their pets' species and ages, and when to say "call your vet". It runs on Groq (`openai/gpt-oss-20b`) and is wrapped in guardrails, human confirmation, logging, offline tests and an evaluation harness.
 
 **Why it matters:** pet-care apps either make you fill in rigid forms or hand you generic chatbot advice. PawPal AI keeps the deterministic scheduler in charge of the facts (times, budgets, conflicts) and uses a constrained model only for what models are good at: understanding loose language and explaining a plan in a friendly way. It also refuses to play vet.
@@ -24,57 +26,56 @@ This extends my **Module 2 project, PawPal+** ([original repo](https://github.co
 
 ```mermaid
 flowchart TD
-    U(["Pet owner"]) -->|"plain-English task, question, or Fix my day"| UI["Streamlit app.py / CLI pawpal_ai_cli.py"]
-    UI --> IG{"Input guardrails: empty, too long, prompt injection"}
-    IG -->|"blocked"| R1["Rejected with reason"]
-    IG -->|"ok"| EM{"Emergency detector: toxins, seizure, collapse"}
-    EM -->|"emergency"| R2["Contact-your-vet message (model never called)"]
-    EM -->|"ok"| SCH[("PawPal+ Scheduler - pawpal_system.py")]
+    U([Pet owner]) --> UI[Streamlit app or CLI]
+    UI --> IG{Input guardrails}
+    IG -- blocked --> R1[Rejected with reason]
+    IG -- ok --> EM{Emergency detector}
+    EM -- emergency --> R2[Contact your vet message, no model call]
+    EM -- ok --> SCH[(PawPal Scheduler)]
 
-    subgraph Coach["Task parser and Care Coach - assistant.py"]
-        SCH -->|"today's plan, skipped tasks, conflicts, pets"| PB["Prompt builder - specialist.py"]
-        KB[("Knowledge base - knowledge/*.md")] --> RET["BM25 retriever with species filter - retriever.py"]
-        RET -->|"top-3 care notes with ids"| PB
-        FS[("Few-shot dataset - data/fewshot_examples.json")] --> PB
-        PB -->|"rules + few-shot + context + notes"| LLM[["Groq gpt-oss-20b, JSON mode"]]
-        LLM --> OV{"Output validation: schema, real pet, valid time, no doses, max 3 tips, only retrieved citations"}
-        OV -->|"invalid"| RETRY["Retry once with error feedback"]
+    subgraph Coach [Task parser and Care Coach]
+        SCH -- plan, skipped tasks, conflicts --> PB[Prompt builder]
+        KB[(Knowledge base markdown docs)] --> RET[BM25 retriever with species filter]
+        RET -- top 3 care notes --> PB
+        FS[(Few-shot dataset)] --> PB
+        PB --> LLM[Groq gpt-oss-20b JSON mode]
+        LLM --> OV{Output validation}
+        OV -- invalid --> RETRY[Retry once with error feedback]
         RETRY --> LLM
     end
 
-    OV -->|"still invalid or API down"| FB["Rule-based fallback - Scheduler.explain_plan"]
-    OV -->|"valid task"| HIL{"Confidence at least 0.7?"}
-    HIL -->|"no"| HUMAN["Owner confirms or discards"]
-    HIL -->|"yes"| ADD["Task added to pet"]
-    HUMAN -->|"confirm"| ADD
+    OV -- still invalid or API down --> FB[Rule-based fallback]
+    OV -- valid task --> HIL{Confidence at least 0.7}
+    HIL -- no --> HUMAN[Owner confirms or discards]
+    HIL -- yes --> ADD[Task added to pet]
+    HUMAN -- confirm --> ADD
     ADD --> SCH
-    OV -->|"valid advice"| OUT["Summary + tips + cited notes + vet flag + confidence"]
+    OV -- valid advice --> OUT[Summary, tips, cited notes, vet flag, confidence]
 
-    subgraph Agent["Fix-my-day agent - agent.py"]
-        SCH -->|"deep copy"| SB[("Sandbox schedule")]
-        AL[["Groq gpt-oss-120b, native tool calls"]] -->|"list_tasks, find_conflicts, find_next_slot, move_task, search_care_notes"| SB
-        SB -->|"observation"| AL
-        AL -->|"finish or 10-step cap"| VER{"Independent verification: conflicts before/after, budget, med moves"}
+    subgraph Agent [Fix my day agent]
+        SCH -- copy --> SB[(Sandbox schedule)]
+        AL[Groq gpt-oss-120b tool calls] -- tool call --> SB
+        SB -- observation --> AL
+        AL -- finish or 10 step cap --> VER{Independent verification}
     end
-    RET -.->|"search_care_notes"| AL
-    VER --> APPROVE{"Owner approves moves?"}
-    APPROVE -->|"yes"| SCH
-    APPROVE -->|"no"| DISCARD["Changes discarded"]
-    VER --> TRACE[("assets/agent_traces/*.md, linked from ai_interactions.md")]
+    RET -. search care notes .-> AL
+    VER --> APPROVE{Owner approves}
+    APPROVE -- yes --> SCH
+    APPROVE -- no --> DISCARD[Changes discarded]
+    VER --> TRACE[(Agent trace markdown)]
 
-    IG -.-> LOG[("logs/pawpal_ai.log")]
+    IG -.-> LOG[(Log file)]
     LLM -.-> LOG
     AL -.-> LOG
 
     subgraph Testing
-        T1["pytest - 53 offline tests with fake model clients"]
-        T2["eval/run_eval.py - RAG vs no-RAG vs baseline on fixed cases"]
+        T1[pytest 53 offline tests]
+        T2[Eval script RAG vs no RAG vs baseline]
     end
-    T1 -.->|"checks"| OV
-    T1 -.->|"checks"| VER
-    T1 -.->|"checks"| RET
-    T2 -.->|"scores"| LLM
-    T2 --> REP["assets/eval_results.md"]
+    T1 -. checks .-> OV
+    T1 -. checks .-> VER
+    T2 -. scores .-> LLM
+    T2 --> REP[Eval results report]
 ```
 
 Source file: [diagrams/architecture.mmd](diagrams/architecture.mmd). Step-by-step sequence diagrams for each workflow (task entry, Care Coach with RAG, agent loop, eval loop) are in [diagrams/workflows.md](diagrams/workflows.md).
