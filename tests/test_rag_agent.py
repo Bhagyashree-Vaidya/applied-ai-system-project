@@ -63,13 +63,21 @@ def test_validate_advice_without_source_list_keeps_sources():
 
 
 # --- agent ----------------------------------------------------------------------------
+class ToolFake(FakeClient):
+    """Fake for native tool calling: each queued item is one tool call."""
+
+    def call_tool(self, messages, tools):
+        assert {t["function"]["name"] for t in tools} >= {"list_tasks", "move_task", "finish"}
+        return self.complete_json(messages)
+
+
 def step(action, **args):
-    return {"thought": f"do {action}", "action": action, "args": args}
+    return {"id": f"c_{action}", "thought": f"do {action}", "action": action, "args": args}
 
 
 def agent_for(*replies, owner=None):
     owner = owner or sample_owner(NOW)
-    return owner, FixMyDayAgent(owner, FakeClient(*replies), now=NOW, save_trace=False)
+    return owner, FixMyDayAgent(owner, ToolFake(*replies), now=NOW, save_trace=False)
 
 
 def _id(owner, description):
@@ -82,11 +90,13 @@ def test_agent_resolves_conflict_in_sandbox_then_applies_after_approval():
     owner, agent = agent_for(step("list_tasks"), step("find_conflicts"),
                              step("find_next_slot", task_id=feed, after="08:00"),
                              step("move_task", task_id=feed, new_time="08:30"),
-                             step("find_conflicts"), step("finish", summary="Moved feeding after the walk."),
+                             step("find_conflicts"), step("finish"),
                              owner=owner)
     run = agent.run()
     assert [s["action"] for s in run.steps][:3] == ["list_tasks", "find_conflicts", "find_next_slot"]
     assert "next free slot" in run.steps[2]["observation"]
+    tool_msgs = [m for m in agent.client.calls[-1] if m["role"] == "tool"]
+    assert len(tool_msgs) == 5 and tool_msgs[0]["tool_call_id"] == "c_list_tasks"
     assert run.verified and len(run.moves) == 1 and run.moves[0].new_time.hour == 8
     # real schedule untouched until apply()
     assert Scheduler(owner).detect_conflicts()
@@ -97,7 +107,7 @@ def test_agent_resolves_conflict_in_sandbox_then_applies_after_approval():
 def test_agent_verification_catches_new_conflict():
     owner = sample_owner(NOW)
     hay = _id(owner, "Hay and water")
-    owner, agent = agent_for(step("move_task", task_id=hay, new_time="08:00"), step("finish", summary="done"),
+    owner, agent = agent_for(step("move_task", task_id=hay, new_time="08:00"), step("finish"),
                              owner=owner)
     run = agent.run()
     assert not run.verified and any("increased" in p for p in run.problems)
@@ -105,7 +115,7 @@ def test_agent_verification_catches_new_conflict():
 
 def test_agent_rejects_bad_tool_calls():
     _, agent = agent_for(step("delete_everything"), step("move_task", task_id=99, new_time="08:00"),
-                         step("move_task", task_id=0, new_time="23:30"), step("finish", summary="x"))
+                         step("move_task", task_id=0, new_time="23:30"), step("finish"))
     obs = [s["observation"] for s in agent.run().steps[:3]]
     assert obs[0].startswith("ERROR: unknown action") and "unknown task_id" in obs[1] and "between" in obs[2]
 
@@ -127,7 +137,7 @@ def test_agent_writes_markdown_trace(tmp_path, monkeypatch):
     monkeypatch.setattr(agent_mod, "TRACE_DIR", tmp_path / "traces")
     monkeypatch.setattr(agent_mod, "ROOT", tmp_path)
     owner = sample_owner(NOW)
-    agent = FixMyDayAgent(owner, FakeClient(step("find_conflicts"), step("finish", summary="nothing")), now=NOW)
+    agent = FixMyDayAgent(owner, ToolFake(step("find_conflicts"), step("finish")), now=NOW)
     run = agent.run()
     text = (tmp_path / run.trace_path).read_text()
     assert "| 1 |" in text and "find_conflicts" in text and "Verification" in text

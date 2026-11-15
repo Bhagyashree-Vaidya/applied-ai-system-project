@@ -6,6 +6,8 @@ import streamlit as st
 
 from pawpal_ai import PawPalAssistant
 from pawpal_ai.agent import FixMyDayAgent
+from pawpal_ai.config import groq_agent_model
+from pawpal_ai.llm import GroqJSONClient
 from pawpal_system import Owner, Pet, Scheduler, Task
 
 DATA_FILE = Path(__file__).parent / "data.json"
@@ -174,7 +176,7 @@ if st.button("Run agent"):
         st.info("AI is unavailable; resolve conflicts manually.")
     else:
         with st.spinner("Agent is working..."):
-            st.session_state.agent_run = FixMyDayAgent(owner, assistant.client).run(
+            st.session_state.agent_run = FixMyDayAgent(owner, GroqJSONClient(model=groq_agent_model())).run(
                 "Fix my day: resolve conflicts and fit skipped important tasks.")
 
 if run := st.session_state.get("agent_run"):

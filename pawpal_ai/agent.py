@@ -1,8 +1,8 @@
 """Fix-my-day agent: plan -> act with scheduler tools -> verify -> human approval.
 
-The model works in a loop. Each turn it returns JSON {"thought", "action", "args"}; we run
+The model works in a loop using native tool calling (one tool call per turn); we run
 the named tool against a *sandbox copy* of the owner's schedule and send back the
-observation. When it calls `finish`, the agent independently re-checks the sandbox
+observation as a tool message. When it calls `finish`, the agent independently re-checks the sandbox
 (no remaining conflicts it introduced, tasks inside the day, budget respected). Changes reach the
 real schedule only through `apply()`, after the owner approves. Every step is
 logged and written to a markdown trace in assets/agent_traces/.
@@ -17,28 +17,41 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from pawpal_ai.config import ROOT
-from pawpal_ai.llm import JSONClient, LLMError
+from pawpal_ai.llm import LLMError
 from pawpal_ai.retriever import Retriever
 from pawpal_system import Owner, Scheduler, Task
 
 log = logging.getLogger("pawpal_ai.agent")
 TRACE_DIR = ROOT / "assets" / "agent_traces"
-MAX_STEPS = 8
+MAX_STEPS = 10
 DAY_START, DAY_END = 6, 22
 
 AGENT_SYSTEM = f"""You are PawPal's scheduling agent. Goal: make today's pet-care schedule work for the owner.
-Fix every time conflict, and try to fit skipped high/medium-priority tasks, by MOVING tasks to new times.
-You can only act through these tools (one per turn):
-- list_tasks {{}}: today's pending tasks with ids, times, durations, priorities.
-- find_conflicts {{}}: overlapping task pairs.
-- find_next_slot {{"task_id": int, "after": "HH:MM"}}: earliest free start for that task's duration.
-- move_task {{"task_id": int, "new_time": "HH:MM"}}: move a task (between {DAY_START:02d}:00 and {DAY_END}:00).
-- search_care_notes {{"query": str}}: pet-care guidance (e.g. whether to walk before or after meals).
-- finish {{"summary": str}}: stop. Summarize what you changed and why in at most 3 sentences.
-Rules: Plan first (look before you move). Prefer moving low-priority tasks; keep medication times unchanged.
-Use find_next_slot rather than guessing. Call find_conflicts before finish to check your work.
-Never invent task ids. At most {MAX_STEPS} steps.
-Reply with JSON only: {{"thought": "short reasoning", "action": "tool name", "args": {{...}}}}"""
+Fix every time conflict by MOVING tasks to new times (between {DAY_START:02d}:00 and {DAY_END}:00).
+Tasks marked SKIPPED are over the owner's daily minute budget; moving them cannot fix that, so leave them
+alone (the owner decides). Call exactly one tool per turn.
+Rules: Plan first: call list_tasks before moving anything. Prefer moving low-priority tasks and keep
+medication times unchanged. Use find_next_slot instead of guessing times. You may search_care_notes for
+guidance (e.g. walking before or after meals). Call find_conflicts to check your work before finish.
+Never invent task ids. You have at most {MAX_STEPS} tool calls, so do not repeat a call whose result you already have."""
+
+
+def _tool(name: str, description: str, **props) -> dict:
+    return {"type": "function", "function": {
+        "name": name, "description": description,
+        "parameters": {"type": "object", "properties": props, "required": list(props)}}}
+
+
+_ID = {"type": "integer", "description": "task id from list_tasks"}
+_HHMM = {"type": "string", "description": "24h time HH:MM"}
+TOOLS = [
+    _tool("list_tasks", "Today's pending tasks with ids, times, durations, priorities and skipped flags."),
+    _tool("find_conflicts", "List overlapping task pairs."),
+    _tool("find_next_slot", "Earliest free start time for a task's duration at or after a time.", task_id=_ID, after=_HHMM),
+    _tool("move_task", "Move a task to a new start time today.", task_id=_ID, new_time=_HHMM),
+    _tool("search_care_notes", "Search the pet-care knowledge base.", query={"type": "string"}),
+    _tool("finish", "Stop when the schedule is fixed (or cannot be improved). Takes no arguments."),
+]
 
 
 @dataclass
@@ -66,7 +79,7 @@ class AgentRun:
 
 
 class FixMyDayAgent:
-    def __init__(self, owner: Owner, client: JSONClient, now: datetime | None = None,
+    def __init__(self, owner: Owner, client, now: datetime | None = None,
                  retriever: Retriever | None = None, save_trace: bool = True):
         self.owner = owner
         self.client = client
@@ -91,7 +104,7 @@ class FixMyDayAgent:
         if action == "list_tasks":
             plan = sched.build_daily_plan(self.now)
             rows = [f"id={i} {t.due_time:%H:%M}-{t.end_time:%H:%M} {t.pet_name} '{t.description}' "
-                    f"{t.duration_minutes}min {t.priority} {t.frequency}{'' if t in plan else ' (SKIPPED: over budget)'}"
+                    f"{t.duration_minutes}min {t.priority} {t.frequency}{'' if t in plan else ' (SKIPPED: does not fit the daily minute budget; moving it will not help)'}"
                     for i, t in sorted(tasks.items(), key=lambda kv: kv[1].due_time)]
             return f"Budget {sandbox.available_minutes_per_day} min. " + ("; ".join(rows) or "no tasks today")
         if action == "find_conflicts":
@@ -130,24 +143,30 @@ class FixMyDayAgent:
 
         for n in range(1, MAX_STEPS + 1):
             try:
-                reply = self.client.complete_json(messages)
+                reply = self.client.call_tool(messages, TOOLS)
             except LLMError as exc:
                 steps.append({"step": n, "thought": "", "action": "(model error)", "args": {}, "observation": str(exc)})
                 summary = f"Stopped: the model was unavailable ({exc})."
                 break
-            action = str(reply.get("action", ""))
-            args = reply.get("args") if isinstance(reply.get("args"), dict) else {}
+            action, args = reply["action"], reply.get("args") or {}
             if action == "finish":
-                summary = str(args.get("summary") or reply.get("thought") or "Done.")
+                summary = "Agent finished."
                 steps.append({"step": n, "thought": reply.get("thought", ""), "action": action, "args": args,
                               "observation": "(finished)"})
                 break
             observation = self._run_tool(sandbox, action, args)
+            if any(p["action"] == action and p["args"] == args and p["observation"] == observation for p in steps):
+                observation += " (NOTE: you already made this exact call; act on the result or finish.)"
             steps.append({"step": n, "thought": reply.get("thought", ""), "action": action, "args": args,
                           "observation": observation})
             log.info("agent step %d %s %s -> %s", n, action, args, observation)
-            messages += [{"role": "assistant", "content": json.dumps(reply)},
-                         {"role": "user", "content": f"Observation: {observation}"}]
+            call_id = reply.get("id") or f"call_{n}"
+            messages += [
+                {"role": "assistant", "content": "", "tool_calls": [{
+                    "id": call_id, "type": "function",
+                    "function": {"name": action, "arguments": json.dumps(args)}}]},
+                {"role": "tool", "tool_call_id": call_id, "content": observation},
+            ]
         else:
             summary = f"Stopped after the {MAX_STEPS}-step limit."
 
@@ -174,11 +193,19 @@ class FixMyDayAgent:
             task = after[m.task_id]
             if "med" in task.description.lower():
                 problems.append(f"Medication task '{task.description}' was moved; confirm with your vet's timing.")
+        plan = sched.build_daily_plan(self.now)
+        skipped = [t for _, t in self._today(sandbox) if t not in plan]
+        if skipped:
+            problems.append(f"Still over the {sandbox.available_minutes_per_day}-min budget, not in today's plan: "
+                            + ", ".join(f"{t.pet_name} '{t.description}'" for t in skipped))
         if not moves and conflicts_before:
             problems.append("No tasks were moved, so the conflicts are unchanged.")
         verified = conflicts_after < conflicts_before or (conflicts_before == 0 and conflicts_after == 0)
         verified = verified and not any("increased" in p for p in problems)
-        return AgentRun(summary, moves, verified, problems, steps)
+        # The summary is written from what the sandbox shows, not from the model's own claims.
+        facts = (f"Moved {'; '.join(m.describe() for m in moves)}." if moves else "No tasks moved.")
+        facts += f" Conflicts: {conflicts_before} -> {conflicts_after}."
+        return AgentRun(f"{summary} {facts}", moves, verified, problems, steps)
 
     def apply(self, run: AgentRun) -> list[str]:
         """Copy approved moves onto the real schedule; return the new conflict warnings."""

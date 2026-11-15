@@ -15,6 +15,8 @@ from datetime import datetime
 
 from pawpal_ai import AssistantResult, PawPalAssistant
 from pawpal_ai.agent import FixMyDayAgent
+from pawpal_ai.config import groq_agent_model
+from pawpal_ai.llm import GroqJSONClient
 from pawpal_ai.sample import sample_owner
 from pawpal_system import Owner
 
@@ -57,7 +59,7 @@ def fix(ai: PawPalAssistant, auto_yes: bool) -> None:
     if ai.client is None:
         print("[FALLBACK] AI is unavailable; resolve conflicts manually.")
         return
-    agent = FixMyDayAgent(ai.owner, ai.client, now=ai.now, retriever=ai.retriever)
+    agent = FixMyDayAgent(ai.owner, GroqJSONClient(model=groq_agent_model()), now=ai.now, retriever=ai.retriever)
     run = agent.run("Fix my day: resolve conflicts and fit skipped important tasks.")
     for s in run.steps:
         print(f"   step {s['step']}: {s['action']} {s['args'] or ''}")
