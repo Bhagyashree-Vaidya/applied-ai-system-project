@@ -1,5 +1,4 @@
 from datetime import datetime, time
-
 from pathlib import Path
 
 import streamlit as st
@@ -12,188 +11,343 @@ from pawpal_system import Owner, Pet, Scheduler, Task
 
 DATA_FILE = Path(__file__).parent / "data.json"
 
-st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
-st.title("🐾 PawPal+")
-
-# Streamlit reruns this script on every interaction, so keep the Owner in session_state.
-if "owner" not in st.session_state:
-    st.session_state.owner = Owner.load(DATA_FILE)  # persisted across app restarts
-owner: Owner = st.session_state.owner
-scheduler = Scheduler(owner)
-
-st.subheader("Owner")
-owner.name = st.text_input("Owner name", value=owner.name)
-owner.available_minutes_per_day = int(
-    st.number_input("Minutes available today", 10, 1440, owner.available_minutes_per_day)
+st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="wide")
+st.markdown(
+    """
+    <style>
+        .block-container { max-width: 1440px; padding-top: 2rem; }
+        .ai-status {
+            display: inline-block; padding: .35rem .8rem; border-radius: 999px;
+            font-size: .85rem; font-weight: 600; margin-top: .75rem;
+        }
+        .ai-on { background: #dcfce7; color: #166534; }
+        .ai-off { background: #e2e8f0; color: #334155; }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
-
-st.subheader("Add a pet")
-with st.form("add_pet", clear_on_submit=True):
-    pet_name = st.text_input("Pet name")
-    species = st.selectbox("Species", ["dog", "cat", "other"])
-    age = st.number_input("Age", 0, 40, 1)
-    if st.form_submit_button("Add pet"):
-        if pet_name.strip():
-            owner.add_pet(Pet(pet_name.strip(), species, int(age)))
-            st.success(f"Added {pet_name.strip()}!")
-        else:
-            st.error("Please enter a pet name.")
-
-owner.save(DATA_FILE)  # persist pets/tasks after any change above
-
-if not owner.pets:
-    st.info("Add a pet to start scheduling tasks.")
-    st.stop()
-
-st.subheader("Schedule a task")
-with st.form("add_task", clear_on_submit=True):
-    target = st.selectbox("Pet", [p.name for p in owner.pets])
-    description = st.text_input("Task", value="Morning walk")
-    c1, c2, c3 = st.columns(3)
-    when = c1.time_input("Time", value=time(8, 0))
-    duration = c2.number_input("Duration (min)", 1, 240, 20)
-    priority = c3.selectbox("Priority", ["high", "medium", "low"])
-    frequency = st.selectbox("Repeats", ["once", "daily", "weekly"])
-    if st.form_submit_button("Add task"):
-        due = datetime.combine(datetime.now().date(), when)
-        pet = next(p for p in owner.pets if p.name == target)
-        pet.add_task(Task(description, due, int(duration), priority, frequency))
-        owner.save(DATA_FILE)
-        st.success(f"Added '{description}' for {target}.")
-
-st.subheader("🤖 Add a task in plain English")
-ai = PawPalAssistant(owner)
-with st.form("ai_task", clear_on_submit=True):
-    request = st.text_input("Describe the task", placeholder="Whiskers needs her meds at 7:30pm every day")
-    if st.form_submit_button("Ask PawPal AI") and request:
-        result = ai.propose_task(request)
-        if result.kind == "task":
-            st.session_state.proposal = result.proposal
-        elif result.kind == "emergency":
-            st.error(result.message)
-        else:
-            st.warning(result.message)
-
-if proposal := st.session_state.get("proposal"):
-    st.info(f"Proposed: {proposal.describe()}")
-    if proposal.needs_confirmation:
-        st.caption("Low confidence - please check the details before scheduling.")
-    c1, c2 = st.columns(2)
-    if c1.button("✅ Schedule it"):
-        for warning in ai.accept(proposal):
-            st.warning(f"Schedule conflict: {warning}")
-        owner.save(DATA_FILE)
-        del st.session_state.proposal
-        st.success("Scheduled!")
-    if c2.button("✖️ Discard"):
-        del st.session_state.proposal
-        st.rerun()
 
 
 def rows(tasks):
     return [
-        {"Time": t.due_time.strftime("%a %H:%M"), "Pet": t.pet_name, "Task": t.description,
-         "Min": t.duration_minutes, "Priority": t.priority, "Repeats": t.frequency,
-         "Done": t.completed}
+        {
+            "Time": t.due_time.strftime("%a %H:%M"),
+            "Pet": t.pet_name,
+            "Task": t.description,
+            "Min": t.duration_minutes,
+            "Priority": t.priority,
+            "Repeats": t.frequency,
+            "Done": t.completed,
+        }
         for t in tasks
     ]
 
 
-st.subheader("Tasks")
-f1, f2 = st.columns(2)
-pet_filter = f1.selectbox("Pet", ["All"] + [p.name for p in owner.pets])
-status = f2.selectbox("Status", ["All", "Pending", "Completed"])
-shown = scheduler.filter_tasks(
-    pet_name=None if pet_filter == "All" else pet_filter,
-    completed={"All": None, "Pending": False, "Completed": True}[status],
-)
-shown = scheduler.sort_by_time(shown)
-if shown:
-    st.table(rows(shown))
-else:
-    st.info("No tasks match.")
+# Streamlit reruns this script on every interaction, so keep the Owner in session_state.
+if "owner" not in st.session_state:
+    st.session_state.owner = Owner.load(DATA_FILE)
+owner: Owner = st.session_state.owner
+scheduler = Scheduler(owner)
+ai = PawPalAssistant(owner)
+ai_enabled = ai.client is not None
 
-for warning in scheduler.conflict_warnings():
-    st.warning(f"Schedule conflict: {warning}. Consider moving one of them.")
+with st.sidebar:
+    st.title("🐾 PawPal+")
+    st.caption("A little structure. A lot of care.")
+    st.divider()
+    st.subheader("Owner settings")
+    owner.name = st.text_input("Owner name", value=owner.name)
+    owner.available_minutes_per_day = int(
+        st.number_input("Minutes available today", 10, 1440, owner.available_minutes_per_day)
+    )
+
+    st.divider()
+    st.subheader("Add a pet")
+    with st.form("add_pet", clear_on_submit=True):
+        pet_name = st.text_input("Pet name", placeholder="e.g. Biscuit")
+        species = st.selectbox("Species", ["dog", "cat", "other"])
+        age = st.number_input("Age", 0, 40, 1)
+        if st.form_submit_button("Add pet", use_container_width=True):
+            if pet_name.strip():
+                owner.add_pet(Pet(pet_name.strip(), species, int(age)))
+                owner.save(DATA_FILE)
+                st.success(f"Added {pet_name.strip()}!")
+            else:
+                st.error("Please enter a pet name.")
+
+    if owner.pets:
+        st.subheader("Your pets")
+        for pet in owner.pets:
+            st.write(f"{'🐕' if pet.species == 'dog' else '🐈' if pet.species == 'cat' else '🐾'} {pet.name}")
+            st.caption(f"{pet.species.capitalize()} · Age {pet.age}")
+
+owner.save(DATA_FILE)  # persist owner settings and any pet changes
+
+heading, ai_status = st.columns([4, 1])
+with heading:
+    st.title("Your care dashboard")
+    st.caption(f"{datetime.now():%A, %B %d} · A plan for every paw.")
+with ai_status:
+    st.markdown(
+        f'<span class="ai-status {"ai-on" if ai_enabled else "ai-off"}">'
+        f'{"● AI on" if ai_enabled else "○ AI off"}</span>',
+        unsafe_allow_html=True,
+    )
+    if not ai_enabled:
+        st.caption("AI unavailable. Set GROQ_API_KEY to enable AI features.")
 
 if "flash" in st.session_state:
-    st.success(st.session_state.pop("flash"))  # survives the rerun after completing a task
+    st.success(st.session_state.pop("flash"))
+for warning in st.session_state.pop("proposal_warnings", []):
+    st.warning(f"Schedule conflict: {warning}")
 
+today = datetime.now().date()
 pending = scheduler.filter_tasks(completed=False)
-if pending:
-    # Select by index: Streamlit may hand back a copy of object options, which would not be the stored task.
-    idx = st.selectbox(
-        "Mark complete", range(len(pending)),
-        format_func=lambda i: f"{pending[i].pet_name}: {pending[i].description} ({pending[i].due_time:%a %H:%M})",
+pending_today = [task for task in pending if task.due_time.date() == today]
+daily_plan = scheduler.build_daily_plan()
+planned_minutes = sum(task.duration_minutes for task in daily_plan)
+conflict_warnings = scheduler.conflict_warnings()
+
+pet_metric, task_metric, time_metric, conflict_metric = st.columns(4)
+with pet_metric.container(border=True):
+    st.metric("Pets", len(owner.pets))
+    st.caption("In your household")
+with task_metric.container(border=True):
+    st.metric("Pending tasks today", len(pending_today))
+    st.caption("Still to check off")
+with time_metric.container(border=True):
+    st.metric("Minutes planned / budget", f"{planned_minutes} / {owner.available_minutes_per_day}")
+    st.caption(f"{len(daily_plan)} tasks fit today's budget")
+with conflict_metric.container(border=True):
+    st.metric("Conflicts", len(conflict_warnings))
+    st.caption("Pending task overlaps · all dates")
+
+today_tab, add_tab, coach_tab, fix_tab = st.tabs(["Today", "Add task", "Care Coach", "Fix my day"])
+
+if not owner.pets:
+    for tab, message in (
+        (today_tab, "Welcome to PawPal+! Add your first pet in the sidebar to start planning their care."),
+        (add_tab, "Add a pet in the sidebar, then create a task here."),
+        (coach_tab, "Add a pet in the sidebar so the Care Coach can tailor its advice."),
+        (fix_tab, "Add a pet and some tasks to get help with your schedule."),
+    ):
+        with tab:
+            st.info(message)
+    st.stop()
+
+with today_tab:
+    st.subheader("Your tasks")
+    st.caption("See what's coming up, check off care, and make room for the essentials.")
+    f1, f2, f3 = st.columns(3)
+    pet_filter = f1.selectbox("Pet", ["All"] + [p.name for p in owner.pets], key="task_pet_filter")
+    status = f2.selectbox("Status", ["All", "Pending", "Completed"])
+    date_filter = f3.selectbox("Show tasks for", ["Today", "All dates"])
+    shown = scheduler.filter_tasks(
+        pet_name=None if pet_filter == "All" else pet_filter,
+        completed={"All": None, "Pending": False, "Completed": True}[status],
     )
-    pick = pending[idx]
-    if st.button("Complete task"):
-        nxt = scheduler.complete_task(pick)
-        owner.save(DATA_FILE)
-        st.session_state.flash = "Done!" + (f" Next one scheduled for {nxt.due_time:%a %H:%M}." if nxt else "")
-        st.rerun()
-
-st.divider()
-st.subheader("Today's plan")
-if st.button("Generate schedule"):
-    plan = scheduler.build_daily_plan()
-    if plan:
-        st.table(rows(plan))
-        st.success(scheduler.explain_plan(plan))
+    if date_filter == "Today":
+        shown = [task for task in shown if task.due_time.date() == today]
+    shown = scheduler.sort_by_time(shown)
+    if shown:
+        st.dataframe(rows(shown), use_container_width=True, hide_index=True)
     else:
-        st.info("No pending tasks for today.")
+        st.info("No tasks match. Adjust the filters or head to Add task to schedule some care.")
 
-st.divider()
-st.subheader("🩺 Care Coach")
-question = st.text_input("Optional question about today's care", placeholder="Is Biscuit getting enough exercise?")
-if st.button("Review my day"):
-    with st.spinner("Asking the PawPal Care Coach..."):
-        result = PawPalAssistant(owner).review_day(question)
-    if result.kind == "emergency" or (result.advice and result.advice.get("vet_flag")):
-        st.error(result.message)
-    elif result.kind == "advice":
-        st.success(result.message)
-    else:
-        st.info(result.message)
-    for tip in (result.advice or {}).get("tips", []):
-        st.markdown(f"- {tip}")
-    if result.retrieved:
-        with st.expander("Care notes used (retrieved from knowledge/)"):
-            cited = set((result.advice or {}).get("sources", []))
-            for chunk in result.retrieved:
-                st.markdown(f"{'✅' if chunk.id in cited else '▫️'} **{chunk.id}** - {chunk.text}")
-    if result.advice and "confidence" in result.advice:
-        st.caption(f"Model confidence: {result.advice['confidence']:.2f}")
-    for note in result.notes:
-        st.caption(note)
+    for warning in conflict_warnings:
+        st.warning(f"Schedule conflict: {warning}. Consider moving one of them.")
 
-st.divider()
-st.subheader("🛠️ Fix my day (agent)")
-st.caption("The agent plans, moves tasks on a copy of your schedule, checks its own work, and waits for your approval.")
-if st.button("Run agent"):
-    assistant = PawPalAssistant(owner)
-    if assistant.client is None:
-        st.info("AI is unavailable; resolve conflicts manually.")
-    else:
-        with st.spinner("Agent is working..."):
-            st.session_state.agent_run = FixMyDayAgent(owner, GroqJSONClient(model=groq_agent_model())).run(
-                "Fix my day: resolve conflicts and fit skipped important tasks.")
+    complete_column, plan_column = st.columns(2)
+    with complete_column.container(border=True):
+        st.subheader("Check off care")
+        if pending:
+            # Select by index: Streamlit may copy object options instead of returning the stored task.
+            idx = st.selectbox(
+                "Mark complete", range(len(pending)),
+                format_func=lambda i: (
+                    f"{pending[i].pet_name}: {pending[i].description} "
+                    f"({pending[i].due_time:%a %H:%M})"
+                ),
+                help="All pending tasks are available here, regardless of the table filters.",
+            )
+            pick = pending[idx]
+            if st.button("Complete task", type="primary"):
+                nxt = scheduler.complete_task(pick)
+                owner.save(DATA_FILE)
+                st.session_state.flash = "Done!" + (
+                    f" Next one scheduled for {nxt.due_time:%a %H:%M}." if nxt else ""
+                )
+                st.rerun()
+        else:
+            st.success("All caught up! No pending tasks.")
 
-if run := st.session_state.get("agent_run"):
-    for s in run.steps:
-        st.markdown(f"**Step {s['step']}** `{s['action']}` {s['args'] or ''}  \n_{s['thought']}_  \n→ {s['observation']}")
-    (st.success if run.verified else st.warning)(f"{run.summary} (verified: {run.verified})")
-    for p in run.problems:
-        st.caption(f"Check: {p}")
-    if run.moves:
-        st.table([{"Pet": m.pet_name, "Task": m.description, "From": f"{m.old_time:%H:%M}", "To": f"{m.new_time:%H:%M}"}
-                  for m in run.moves])
-        c1, c2 = st.columns(2)
-        if c1.button("✅ Apply changes"):
-            FixMyDayAgent(owner, None).apply(run)
-            owner.save(DATA_FILE)
-            del st.session_state.agent_run
-            st.rerun()
-        if c2.button("✖️ Discard changes"):
-            del st.session_state.agent_run
-            st.rerun()
+    with plan_column.container(border=True):
+        st.subheader("Today's plan")
+        st.caption("Prioritize today's care within your available minutes.")
+        skipped_count = len(pending_today) - len(daily_plan)
+        if skipped_count:
+            st.warning(f"{skipped_count} pending task(s) won't fit today's minute budget.")
+        if st.button("Generate schedule", type="primary"):
+            if daily_plan:
+                st.dataframe(rows(daily_plan), use_container_width=True, hide_index=True)
+                st.success(scheduler.explain_plan(daily_plan))
+            elif pending_today:
+                st.info("No tasks fit today's budget. Increase your available minutes in the sidebar.")
+            else:
+                st.info("No pending tasks for today.")
+
+with add_tab:
+    st.subheader("Make time for care")
+    st.caption("Enter the details yourself, or describe a task for PawPal AI to prepare.")
+    manual_column, ai_column = st.columns(2)
+
+    with manual_column.container(border=True):
+        st.subheader("Schedule a task")
+        with st.form("add_task", clear_on_submit=True):
+            target = st.selectbox("Pet", [p.name for p in owner.pets], key="new_task_pet")
+            description = st.text_input("Task", value="Morning walk")
+            c1, c2 = st.columns(2)
+            when = c1.time_input("Time", value=time(8, 0))
+            duration = c2.number_input("Duration (min)", 1, 240, 20)
+            c3, c4 = st.columns(2)
+            priority = c3.selectbox("Priority", ["high", "medium", "low"])
+            frequency = c4.selectbox("Repeats", ["once", "daily", "weekly"])
+            if st.form_submit_button("Add task", type="primary", use_container_width=True):
+                due = datetime.combine(today, when)
+                pet = next(p for p in owner.pets if p.name == target)
+                pet.add_task(Task(description, due, int(duration), priority, frequency))
+                owner.save(DATA_FILE)
+                st.session_state.flash = f"Added '{description}' for {target}."
+                st.rerun()
+
+    with ai_column.container(border=True):
+        st.subheader("Add a task in plain English")
+        st.caption("Review the proposal before anything is added to your schedule.")
+        with st.form("ai_task", clear_on_submit=True):
+            request = st.text_input(
+                "Describe the task", placeholder="Whiskers needs her meds at 7:30pm every day"
+            )
+            if st.form_submit_button("Ask PawPal AI", type="primary", use_container_width=True) and request:
+                with st.spinner("Preparing a task proposal..."):
+                    result = ai.propose_task(request)
+                if result.kind == "task":
+                    st.session_state.proposal = result.proposal
+                elif result.kind == "emergency":
+                    st.error(result.message)
+                else:
+                    st.warning(result.message)
+
+        if proposal := st.session_state.get("proposal"):
+            st.markdown("**Review your task**")
+            st.info(f"Proposed: {proposal.describe()}")
+            if proposal.needs_confirmation:
+                st.caption("Low confidence - please check the details before scheduling.")
+            c1, c2 = st.columns(2)
+            if c1.button("✅ Schedule it", type="primary", use_container_width=True):
+                st.session_state.proposal_warnings = ai.accept(proposal)
+                owner.save(DATA_FILE)
+                del st.session_state.proposal
+                st.session_state.flash = "Scheduled! Review your task in Today."
+                st.rerun()
+            if c2.button("✖️ Discard", use_container_width=True):
+                del st.session_state.proposal
+                st.rerun()
+
+with coach_tab:
+    st.subheader("Care Coach")
+    st.caption("Review today's care with advice grounded in your pets, schedule, and care notes.")
+    with st.container(border=True):
+        question = st.text_input(
+            "Optional question about today's care", placeholder="Is Biscuit getting enough exercise?"
+        )
+        review_day = st.button("Review my day", type="primary")
+
+    if review_day:
+        with st.spinner("Asking the PawPal Care Coach..."):
+            result = ai.review_day(question)
+        st.markdown("**Care summary**")
+        if result.kind == "emergency" or (result.advice and result.advice.get("vet_flag")):
+            st.error(result.message)
+        elif result.kind == "advice":
+            st.success(result.message)
+        else:
+            st.info(result.message)
+        tips = (result.advice or {}).get("tips", [])
+        if tips:
+            st.markdown("**Tips for your day**")
+            for tip in tips:
+                st.markdown(f"- {tip}")
+        if result.advice and "confidence" in result.advice:
+            st.caption(f"Model confidence: {result.advice['confidence']:.2f}")
+        if result.retrieved:
+            with st.expander("Retrieved care notes"):
+                st.caption("✅ Cited in this advice · ▫️ Retrieved for context")
+                cited = set((result.advice or {}).get("sources", []))
+                for chunk in result.retrieved:
+                    st.markdown(f"{'✅' if chunk.id in cited else '▫️'} **{chunk.id}**")
+                    st.write(chunk.text)
+        for note in result.notes:
+            st.caption(note)
+
+with fix_tab:
+    st.subheader("Fix my day")
+    st.caption("The agent works on a copy of your schedule, checks its changes, and waits for your approval.")
+    if st.button("Run agent", type="primary"):
+        if ai.client is None:
+            st.info("AI is unavailable; resolve conflicts manually.")
+        else:
+            with st.spinner("Agent is working..."):
+                st.session_state.agent_run = FixMyDayAgent(
+                    owner, GroqJSONClient(model=groq_agent_model())
+                ).run("Fix my day: resolve conflicts and fit skipped important tasks.")
+
+    if run := st.session_state.get("agent_run"):
+        if run.verified:
+            st.success(f"Verification passed · {run.summary}")
+        else:
+            st.warning(f"Verification needs review · {run.summary}")
+        for problem in run.problems:
+            st.warning(f"Check: {problem}")
+
+        trace_column, moves_column = st.columns([3, 2])
+        with trace_column:
+            with st.expander(f"Step-by-step trace · {len(run.steps)} steps", expanded=True):
+                for step in run.steps:
+                    st.markdown(f"**Step {step['step']} · `{step['action']}`**")
+                    if step["thought"]:
+                        st.caption(step["thought"])
+                    if step["args"]:
+                        st.json(step["args"], expanded=False)
+                    st.write(step["observation"])
+                    st.divider()
+                if not run.steps:
+                    st.caption("No steps were recorded for this run.")
+
+        with moves_column.container(border=True):
+            st.subheader("Proposed moves")
+            if run.moves:
+                st.dataframe(
+                    [
+                        {
+                            "Pet": move.pet_name,
+                            "Task": move.description,
+                            "From": f"{move.old_time:%H:%M}",
+                            "To": f"{move.new_time:%H:%M}",
+                        }
+                        for move in run.moves
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            else:
+                st.info("No schedule changes proposed.")
+            c1, c2 = st.columns(2)
+            if c1.button("✅ Apply changes", type="primary", disabled=not run.moves, use_container_width=True):
+                FixMyDayAgent(owner, None).apply(run)
+                owner.save(DATA_FILE)
+                del st.session_state.agent_run
+                st.session_state.flash = "Schedule updated. Review your tasks in Today."
+                st.rerun()
+            if c2.button("✖️ Discard changes", use_container_width=True):
+                del st.session_state.agent_run
+                st.rerun()
