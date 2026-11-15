@@ -197,3 +197,10 @@ def test_groq_client_does_not_retry_other_errors():
     client._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=boom)))
     with pytest.raises(LLMError):
         client.complete_json([])
+
+
+def test_api_key_read_from_environment(monkeypatch):
+    from pawpal_ai import config
+
+    monkeypatch.setenv("GROQ_API_KEY", "  test-key  ")
+    assert config.groq_api_key() == "test-key"
