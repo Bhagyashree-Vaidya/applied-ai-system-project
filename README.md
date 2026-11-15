@@ -15,6 +15,8 @@ This extends my **Module 2 project, PawPal+** ([original repo](https://github.co
 | **Plain-English task entry** | The model turns free text into a JSON task, which is validated against the real household (pet exists, valid time, 1–240 minutes, valid priority/frequency) and then added to the scheduler. Tasks with confidence below 0.7 wait for the owner to confirm them (human-in-the-loop). |
 | **Care Coach review** | `Scheduler` output (today's plan, skipped tasks, conflicts, pets) is put into the prompt, and the model returns a 2-sentence summary, at most 3 tips, a `vet_flag` and a confidence score. |
 | **Specialization** | A role prompt with hard style and safety rules, plus a **synthetic few-shot dataset** ([data/fewshot_examples.json](data/fewshot_examples.json)) that uses different pets (Mochi, Pepper, Clover) from the evaluation set. The same model with a bare prompt is the **baseline**, so the effect can be measured. |
+| **RAG: care knowledge base** | 7 curated markdown docs in [knowledge/](knowledge/) (dog exercise, senior cats, rabbits, feeding, enrichment, toxins, medication safety) are split into 31 sections and ranked with BM25, filtered to the household's species ([pawpal_ai/retriever.py](pawpal_ai/retriever.py)). The top 3 notes go into the coach prompt; the coach must cite their ids, and invented citations are dropped. |
+| **Agentic workflow: Fix my day** | [pawpal_ai/agent.py](pawpal_ai/agent.py): `gpt-oss-120b` uses native tool calls (`list_tasks`, `find_conflicts`, `find_next_slot`, `move_task`, `search_care_notes`, `finish`) on a sandbox copy of the schedule. It is capped at 10 steps, then code independently verifies conflicts before/after, the time budget and medication moves, and the owner approves before anything changes. Traces are saved to [assets/agent_traces/](assets/agent_traces/) and linked from [ai_interactions.md](ai_interactions.md). |
 | **Guardrails** | Empty, overly long and prompt-injection inputs are blocked before the model. Emergencies (toxins, seizures, collapse) get a "contact your vet now" message **without calling the model**. Medication doses are stripped from output. Invalid output gets one retry with error feedback. If the API is down, PawPal falls back to the rule-based explanation. |
 | **Logging** | Every input, raw model output, retry, validation failure and latency is written to `logs/pawpal_ai.log` ([excerpt](assets/sample_log.txt)). |
 
@@ -22,57 +24,82 @@ This extends my **Module 2 project, PawPal+** ([original repo](https://github.co
 
 ```mermaid
 flowchart TD
-    U(["Pet owner"]) -->|"plain-English task or question"| UI["Streamlit app.py / CLI pawpal_ai_cli.py"]
+    U(["Pet owner"]) -->|"plain-English task, question, or Fix my day"| UI["Streamlit app.py / CLI pawpal_ai_cli.py"]
     UI --> IG{"Input guardrails: empty, too long, prompt injection"}
     IG -->|"blocked"| R1["Rejected with reason"]
     IG -->|"ok"| EM{"Emergency detector: toxins, seizure, collapse"}
     EM -->|"emergency"| R2["Contact-your-vet message (model never called)"]
     EM -->|"ok"| SCH[("PawPal+ Scheduler - pawpal_system.py")]
-    SCH -->|"today's plan, skipped tasks, conflicts, pets"| PB["Prompt builder - specialist.py"]
-    FS[("Few-shot dataset - data/fewshot_examples.json")] --> PB
-    PB -->|"system rules + few-shot examples + context"| LLM[["Groq LLM - openai/gpt-oss-20b, JSON mode"]]
-    LLM --> OV{"Output validation: schema, real pet, valid time, no medication doses, max 3 tips"}
-    OV -->|"invalid"| RETRY["Retry once with error feedback"]
-    RETRY --> LLM
+
+    subgraph Coach["Task parser and Care Coach - assistant.py"]
+        SCH -->|"today's plan, skipped tasks, conflicts, pets"| PB["Prompt builder - specialist.py"]
+        KB[("Knowledge base - knowledge/*.md")] --> RET["BM25 retriever with species filter - retriever.py"]
+        RET -->|"top-3 care notes with ids"| PB
+        FS[("Few-shot dataset - data/fewshot_examples.json")] --> PB
+        PB -->|"rules + few-shot + context + notes"| LLM[["Groq gpt-oss-20b, JSON mode"]]
+        LLM --> OV{"Output validation: schema, real pet, valid time, no doses, max 3 tips, only retrieved citations"}
+        OV -->|"invalid"| RETRY["Retry once with error feedback"]
+        RETRY --> LLM
+    end
+
     OV -->|"still invalid or API down"| FB["Rule-based fallback - Scheduler.explain_plan"]
     OV -->|"valid task"| HIL{"Confidence at least 0.7?"}
-    HIL -->|"no"| HUMAN["Owner confirms or discards (human-in-the-loop)"]
+    HIL -->|"no"| HUMAN["Owner confirms or discards"]
     HIL -->|"yes"| ADD["Task added to pet"]
     HUMAN -->|"confirm"| ADD
     ADD --> SCH
-    OV -->|"valid advice"| OUT["Summary + tips + vet flag + confidence shown to owner"]
+    OV -->|"valid advice"| OUT["Summary + tips + cited notes + vet flag + confidence"]
+
+    subgraph Agent["Fix-my-day agent - agent.py"]
+        SCH -->|"deep copy"| SB[("Sandbox schedule")]
+        AL[["Groq gpt-oss-120b, native tool calls"]] -->|"list_tasks, find_conflicts, find_next_slot, move_task, search_care_notes"| SB
+        SB -->|"observation"| AL
+        AL -->|"finish or 10-step cap"| VER{"Independent verification: conflicts before/after, budget, med moves"}
+    end
+    RET -.->|"search_care_notes"| AL
+    VER --> APPROVE{"Owner approves moves?"}
+    APPROVE -->|"yes"| SCH
+    APPROVE -->|"no"| DISCARD["Changes discarded"]
+    VER --> TRACE[("assets/agent_traces/*.md, linked from ai_interactions.md")]
+
     IG -.-> LOG[("logs/pawpal_ai.log")]
     LLM -.-> LOG
-    OV -.-> LOG
+    AL -.-> LOG
+
     subgraph Testing
-        T1["pytest - 37 offline tests with a fake model client"]
-        T2["eval/run_eval.py - specialized vs baseline on fixed cases"]
+        T1["pytest - 53 offline tests with fake model clients"]
+        T2["eval/run_eval.py - RAG vs no-RAG vs baseline on fixed cases"]
     end
     T1 -.->|"checks"| OV
-    T1 -.->|"checks"| SCH
+    T1 -.->|"checks"| VER
+    T1 -.->|"checks"| RET
     T2 -.->|"scores"| LLM
     T2 --> REP["assets/eval_results.md"]
 ```
 
-Source file: [diagrams/architecture.mmd](diagrams/architecture.mmd).
+Source file: [diagrams/architecture.mmd](diagrams/architecture.mmd). Step-by-step sequence diagrams for each workflow (task entry, Care Coach with RAG, agent loop, eval loop) are in [diagrams/workflows.md](diagrams/workflows.md).
 
-A request from the Streamlit app or CLI first passes **input guardrails** and the **emergency detector**, both deterministic. Next, the **prompt builder** (`pawpal_ai/specialist.py`) combines the system rules, the few-shot examples and live context from the **PawPal+ Scheduler**, then calls **Groq in JSON mode** (`pawpal_ai/llm.py`). **Output validation** (`pawpal_ai/guardrails.py`) checks the result against the household and safety rules; it retries once on failure and falls back to the rule-based plan if the model is still wrong or unreachable. Valid tasks go through a **confidence gate**, where the human confirms low-confidence tasks, before they reach the scheduler. Valid advice is shown with its vet flag and confidence. `pawpal_ai/assistant.py` orchestrates all of this. **Testing** sits alongside: 37 offline pytest tests with a fake model client, and `eval/run_eval.py`, which scores the live model against a baseline.
+A request from the Streamlit app or CLI first passes **input guardrails** and the **emergency detector**, both deterministic. Next, the **prompt builder** (`pawpal_ai/specialist.py`) combines the system rules, the few-shot examples and live context from the **PawPal+ Scheduler**, then calls **Groq in JSON mode** (`pawpal_ai/llm.py`). **Output validation** (`pawpal_ai/guardrails.py`) checks the result against the household and safety rules; it retries once on failure and falls back to the rule-based plan if the model is still wrong or unreachable. Valid tasks go through a **confidence gate**, where the human confirms low-confidence tasks, before they reach the scheduler. Before the coach is called, the **retriever** pulls the 3 most relevant care notes from `knowledge/` for the household's species, and the coach must cite them. Valid advice is shown with its cited notes, vet flag and confidence. `pawpal_ai/assistant.py` orchestrates all of this. The **Fix-my-day agent** runs separately: it copies the schedule into a sandbox, lets `gpt-oss-120b` call scheduler tools in a loop, verifies the result in code, writes a trace, and waits for the owner's approval. **Testing** sits alongside: 53 offline pytest tests with fake model clients, and `eval/run_eval.py`, which compares RAG, no-RAG and baseline configurations.
 
 ```
 pawpal_system.py        original PawPal+ scheduler (unchanged)
 pawpal_ai/
-  assistant.py          orchestration: guardrails -> model -> validation -> scheduler
+  assistant.py          orchestration: guardrails -> retrieval -> model -> validation -> scheduler
+  retriever.py          BM25 retrieval over knowledge/*.md (RAG)
+  agent.py              Fix-my-day tool-calling agent with verification and traces
   specialist.py         specialized vs baseline prompt builders
   guardrails.py         input checks, emergency detector, output validation
   llm.py                Groq JSON-mode client with error handling
   sample.py             sample household used by the CLI demo and eval
 data/fewshot_examples.json   synthetic specialization dataset
+knowledge/              curated pet-care notes used for retrieval
 app.py                  Streamlit UI (now with AI task entry + Care Coach)
 pawpal_ai_cli.py        CLI: demo | add | review
 eval/                   evaluation cases, harness, raw results
-tests/                  pytest (original 16 + 21 AI tests)
+tests/                  pytest (original 16 + 37 AI tests)
 assets/                 reproducible run outputs and eval reports
-diagrams/               architecture.mmd (+ original UML)
+diagrams/               architecture.mmd, workflows.md (+ original UML)
+docs/presentation.md    presentation outline and demo script
 ```
 
 ## Setup
@@ -92,10 +119,11 @@ cp .env.example .env               # then open .env and paste your key after GRO
 Run it:
 
 ```bash
-python -m pytest                   # 37 offline tests, no key needed
+python -m pytest                   # 53 offline tests, no key needed
 python pawpal_ai_cli.py demo       # scripted end-to-end run against Groq
 python pawpal_ai_cli.py add "walk Biscuit at 7am daily, important"
 python pawpal_ai_cli.py review "Is Nibbles getting enough enrichment?"
+python pawpal_ai_cli.py fix                       # agent: resolves conflicts, asks before applying
 python -m eval.run_eval            # specialized vs baseline evaluation (~1-2 min)
 streamlit run app.py               # web UI
 ```
@@ -143,7 +171,38 @@ All of these are real outputs from `openai/gpt-oss-20b` on Groq (full runs: [ass
    note: Vet flag raised - PawPal recommends contacting your veterinarian.
 ```
 
-**4. Guardrails**
+**4. Care Coach with retrieved care notes (RAG)** ([assets/review_rag.txt](assets/review_rag.txt))
+
+```text
+> review: Nibbles seems bored in the afternoons, any ideas?
+[ADVICE] Jordan, your schedule includes Biscuit's walk, Whiskers' feeding, and Nibbles' hay, but the walk and feeding overlap. The grooming session was skipped due to time constraints.
+   - Move Whiskers feeding to 08:30 to avoid overlap with Biscuit's walk.
+   - Give Nibbles a cardboard box and a dig box with shredded paper for enrichment.
+   - Set up a safe rabbit‑proofed area outside the enclosure for Nibbles to run and explore.
+   sources: rabbit_care#enrichment-ideas, rabbit_care#exercise-space
+   (vet_flag=False, confidence=0.90)
+```
+
+**5. Fix-my-day agent** ([assets/agent_run.txt](assets/agent_run.txt), trace: [trace_example_success.md](assets/agent_traces/trace_example_success.md))
+
+```text
+> fix my day (agent)
+   step 1: list_tasks
+   step 2: find_conflicts
+      observation: Biscuit's 'Morning walk' (08:00-08:30) overlaps Whiskers's 'Feeding' (08:15) - next free slot: 08:30
+   step 3: find_next_slot {'after': '08:30', 'task_id': 1}
+   step 4: move_task {'new_time': '08:30', 'task_id': 1}
+      observation: moved id=1 Whiskers 'Feeding' 08:15 -> 08:30
+   step 5: find_conflicts
+      observation: no conflicts
+   step 6: finish
+[AGENT] Agent finished. Moved Whiskers - Feeding: 08:15 -> 08:30. Conflicts: 1 -> 0.
+   verified=True; moves: Whiskers - Feeding: 08:15 -> 08:30
+   check: Still over the 90-min budget, not in today's plan: Whiskers 'Grooming'
+   ✅ applied; conflicts now: 0
+```
+
+**6. Guardrails**
 
 ```text
 > add: feed the parrot at noon
@@ -160,22 +219,23 @@ The injection and grape cases never reach the model; the parrot case is rejected
 
 ## Reliability and evaluation
 
-**Automated tests:** `python -m pytest` runs **37/37 passing** (16 original scheduler tests and 21 AI-layer tests). The AI tests use a `FakeClient`, so they are deterministic and need no network. They cover validation, the retry with feedback, the human-confirmation threshold, the API-down fallback, injection and emergency blocking, dose stripping, tip limits, and a check that the coach prompt actually contains the scheduler's conflicts.
+**Automated tests:** `python -m pytest` runs **53/53 passing** (16 original scheduler tests and 37 AI-layer tests). Fake model clients make them deterministic and network-free. They cover validation, the retry with feedback, Groq malformed-generation retries, the human-confirmation threshold, API-down fallbacks, injection and emergency blocking, dose stripping, retrieval ranking and species filtering, citation checking, and the agent loop (tool dispatch, bad tool calls, step cap, verification catching a new conflict, and changes held in the sandbox until approved).
 
-**Evaluation harness:** `python -m eval.run_eval` runs 8 task-parsing cases and 6 coaching cases through the specialized model and the baseline, scores the raw output before any guardrail repair, then runs 5 guardrail cases through the full pipeline. Full report: [assets/eval_results.md](assets/eval_results.md); console output: [assets/eval_run.txt](assets/eval_run.txt).
+**Evaluation harness:** `python -m eval.run_eval` runs 8 task-parsing and 9 coaching cases through three configurations of the same model, scores the raw output, then runs 5 guardrail cases through the full pipeline. Report: [assets/eval_results.md](assets/eval_results.md); console output: [assets/eval_run.txt](assets/eval_run.txt).
 
-| Mode | Parse pass | Parse field accuracy | Coach pass | Vet-flag correct | Style limits met | Avg confidence | Avg latency (s) |
-|---|---|---|---|---|---|---|---|
-| **specialized** | **8/8** | **1.00** | **6/6** | **6/6** | **6/6** | 0.92 | 10.85 |
-| baseline | 5/8 | 0.90 | 0/6 | 5/6 | 1/6 | 0.82 | 4.06 |
+| Mode | Parse pass | Field acc. | Coach pass | Vet flag | Style limits | Knowledge facts | Cited sources | Avg conf. | Latency (s) |
+|---|---|---|---|---|---|---|---|---|---|
+| **specialized + RAG** (app) | **8/8** | **1.00** | **9/9** | **9/9** | **9/9** | **7/7** | 8/9 | 0.92 | 10.2 |
+| specialized, no RAG | (same) | (same) | 5/9 | 8/9 | 8/9 | 3/6 | 0/9 | 0.93 | 12.4 |
+| baseline prompt | 6/8 | 0.93 | 0/9 | 6/9 | 1/9 | 4/7 | 0/9 | 0.77 | 5.2 |
 
-Guardrail cases: **5/5 passed** (empty input, prompt injection, two emergencies, unknown pet).
+Guardrail cases: **5/5 passed**. "Knowledge facts" checks that the answer contains the key fact from the knowledge base (for example "unlimited hay" or "wait an hour before vigorous play").
 
-**What I learned from the numbers:**
-- **Specialization measurably changes behavior.** The baseline scheduled "remind me to buy milk" as a pet task, returned priorities as numbers (`2`) instead of `high/medium/low`, and wrote 4+ long tips in 5 of 6 reviews.
-- **The eval caught real failures.** In the first run ([assets/eval_results_v1.md](assets/eval_results_v1.md)), the specialized coach scored only **4/6**: it gave sensible advice about increased thirst and a gabapentin-dose question but did **not** raise the vet flag. It also stated that feeding "was moved to 08:30", which the scheduler never does. After I added explicit rules (any change in health or behavior or any dosing question → vet flag; phrase moves as suggestions; respect the time budget), it scored **6/6**.
-- **Specialization costs latency.** The longer prompt with few-shot examples is about 2.5× slower (≈11 s vs 4 s per call).
-- **Caveats:** this is a small set of 14 cases scored by rule-based checks, and one baseline call in the final run hit a Groq rate limit (`RateLimitError`) and was scored as a failure. Outputs vary from run to run because sampling temperature is 0.2.
+**What the numbers show:**
+- **Specialization fixed format and scope.** The baseline scheduled "remind me to buy milk" as a pet task (`"pet_name": null, "priority": 3`) and wrote 4+ long tips in 8 of 9 reviews; the specialized parser returned `{"is_task": false, "reason": "The request is not a pet-care task."}`.
+- **Retrieval fixed facts.** Asked "Is it OK to play fetch with Biscuit right after his breakfast?", the coach *without* RAG said to wait "10–15 minutes". *With* RAG it retrieved `dog_exercise#walk-timing-and-meals` and said to "wait at least one hour after Biscuit's meal before vigorous play", matching the bloat-risk guidance.
+- **The eval drove the design.** An earlier run ([v1](assets/eval_results_v1.md)) showed the coach missing vet flags on thirst and dosing questions (4/6), which was fixed by explicit rules ([v2](assets/eval_results_v2.md), 6/6). Agent traces showed it overclaiming "all tasks fit", so its summary is now written by code.
+- **Caveats:** this is a small, rule-scored set. In the final run one no-RAG call hit a Groq rate limit and one baseline call returned malformed output; both were scored as failures. Results vary between runs (temperature 0.2).
 
 ## Design decisions and trade-offs
 
@@ -184,7 +244,9 @@ Guardrail cases: **5/5 passed** (empty input, prompt injection, two emergencies,
 - **Deterministic safety before the model.** Emergency and injection checks are regexes: transparent, instant and testable. The trade-off is that they can miss unusual phrasing, so the model's own `vet_flag` acts as a second layer.
 - **JSON mode + strict validation + one retry.** One retry fixes most formatting slips; more retries would add latency for little gain.
 - **Human-in-the-loop at confidence < 0.7.** Vague requests ("brush clover tomorrow afternoon") are shown for confirmation instead of being silently scheduled.
-- **`openai/gpt-oss-20b` by default.** Groq moved its Llama models to enterprise-only, while gpt-oss-20b is fast, cheap and supports JSON mode. The model can be changed with `GROQ_MODEL`.
+- **`openai/gpt-oss-20b` for parsing and coaching, `gpt-oss-120b` for the agent.** Groq moved its Llama models to enterprise-only. The 20b model is fast and cheap for single JSON calls, but in multi-step tool use it repeated calls and hit the step cap (see the traces), while 120b solved the same task in 6 steps. Both can be changed with `GROQ_MODEL` / `GROQ_AGENT_MODEL`.
+- **BM25 instead of embeddings for RAG.** No extra dependencies or API calls, and it is transparent and testable. The trade-off is that it misses paraphrases; species filtering keeps rabbit notes out of dog answers.
+- **Agent works on a sandbox and needs approval.** The model can only call whitelisted tools on a copy; code verifies the result and the human applies it.
 
 ## Reflection
 

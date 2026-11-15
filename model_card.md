@@ -7,21 +7,51 @@
 | **System** | PawPal AI: natural-language task parser + Care Coach layered on the PawPal+ scheduler (Module 2) |
 | **Underlying model** | `openai/gpt-oss-20b` served by Groq, JSON mode, temperature 0.2 (configurable via `GROQ_MODEL`) |
 | **Specialization** | System prompt with style and safety rules + few-shot examples from a synthetic dataset ([data/fewshot_examples.json](data/fewshot_examples.json): 6 parsing and 3 coaching examples). No weight updates. |
+| **Retrieval (RAG)** | BM25 over 31 sections of 7 curated care documents in `knowledge/`, filtered by species; top 3 notes go into the coach prompt and must be cited. |
+| **Agent** | `openai/gpt-oss-120b` with native tool calls on a sandbox schedule, at most 10 steps, code verification, and owner approval. |
 | **Baseline for comparison** | The same model with a one-line instruction and the JSON keys only |
 | **Intended use** | Helping pet owners enter care tasks quickly and understand or adjust their daily plan |
 | **Not intended for** | Diagnosis, treatment or medication dosing, or emergencies. These are routed to a veterinarian by design. |
 
 ## Evaluation results
 
-Command: `python -m eval.run_eval` (14 model cases + 5 guardrail cases). Full report: [assets/eval_results.md](assets/eval_results.md).
+Command: `python -m eval.run_eval` (8 parse + 9 coach cases per mode, plus 5 guardrail cases). Full report: [assets/eval_results.md](assets/eval_results.md).
 
-| Mode | Parse pass | Field accuracy | Coach pass | Vet-flag correct | Style limits met | Avg confidence | Avg latency |
-|---|---|---|---|---|---|---|---|
-| Specialized (final) | 8/8 | 1.00 | 6/6 | 6/6 | 6/6 | 0.92 | 10.9 s |
-| Specialized (v1, before rule fix) | 8/8 | 1.00 | 4/6 | 4/6 | 6/6 | 0.91 | 10.6 s |
-| Baseline | 5/8 | 0.90 | 0/6 | 5/6 | 1/6 | 0.82 | 4.1 s |
+| Mode | Parse pass | Field acc. | Coach pass | Vet flag | Style limits | Knowledge facts | Cited sources | Avg conf. | Latency |
+|---|---|---|---|---|---|---|---|---|---|
+| Specialized + RAG (final app) | 8/8 | 1.00 | 9/9 | 9/9 | 9/9 | 7/7 | 8/9 | 0.92 | 10.2 s |
+| Specialized, no RAG | same parser | | 5/9 | 8/9 | 8/9 | 3/6 | 0/9 | 0.93 | 12.4 s |
+| Baseline prompt | 6/8 | 0.93 | 0/9 | 6/9 | 1/9 | 4/7 | 0/9 | 0.77 | 5.2 s |
+| *Earlier: specialized v1 (6 coach cases)* | 8/8 | 1.00 | 4/6 | 4/6 | 6/6 | – | – | 0.91 | 10.6 s |
 
-Guardrail pipeline: 5/5 (empty input, prompt injection, grape ingestion, seizure, unknown pet). Unit tests: 37/37 passing.
+Guardrail pipeline: 5/5. Unit tests: 53/53. One no-RAG call (rate limit) and one baseline call (malformed output) failed at the API level and are counted as failures.
+
+### Baseline vs specialized output (same model, same input)
+
+**Input:** "remind me to buy milk at 5pm"
+
+```json
+// baseline
+{"is_task": true, "pet_name": null, "description": "Buy milk", "time": "17:00", "day_offset": 0,
+ "duration_minutes": 0, "priority": 3, "frequency": "once", "confidence": 0.9}
+// specialized
+{"is_task": false, "reason": "The request is not a pet-care task.", "confidence": 0.99}
+```
+
+**Input:** "Whiskers needs her kidney meds at 7:30pm every day". The baseline returned `"priority": 1` (not a valid value); the specialized parser returned `"priority": "high", "frequency": "daily", "time": "19:30"`.
+
+**Coach style:** the baseline exceeded the 3-tip / 25-word limit in 8 of 9 reviews and returned `tips` as a string in some answers; the specialized coach met it in 9 of 9.
+
+### RAG before/after
+
+**Input:** "Is it OK to play fetch with Biscuit right after his breakfast?"
+
+| | Answer (excerpt) | Sources |
+|---|---|---|
+| No RAG | "Playing fetch after Biscuit's breakfast is fine if you wait a few minutes for him to settle." Tip: "Wait 10–15 minutes after Biscuit's breakfast before fetch." | none |
+| With RAG | "Wait at least one hour after Biscuit's meal before vigorous play like fetch." | `dog_exercise#walk-timing-and-meals`, `feeding_routines#combining-walks-and-meals` |
+
+The no-RAG answer is confident (0.95) but contradicts common veterinary guidance about vigorous exercise after meals and bloat risk. Retrieval grounded it. Across the set, answers containing the key care fact went from 3/6 to 7/7.
 
 **Human review of the live demo** ([assets/demo_run.txt](assets/demo_run.txt)):
 
@@ -40,7 +70,9 @@ Guardrail pipeline: 5/5 (empty input, prompt injection, grape ingestion, seizure
 - **Keyword-based safety net.** The emergency and injection detectors are regular expressions. "Biscuit ate raisins" is caught, but I checked two paraphrases that are **missed**: "he got into the trail mix with raisins" and "he chewed my Advil bottle" (no "ate/swallowed" verb). Other languages slip past too. The model's `vet_flag` is a second layer, not a guarantee.
 - **English-only, US-centric defaults.** Vague time defaults (morning = 08:00, evening = 18:00) reflect one culture's routine.
 - **Self-reported confidence is weakly calibrated.** The model reports 0.90–0.95 for almost everything, including the v1 answers that missed the vet flag. The 0.7 confirmation threshold therefore catches truly vague requests but should not be read as a probability of being correct.
-- **Small evaluation.** 14 cases scored by rule checks; results vary from run to run and depend on Groq's rate limits (one baseline call was rate-limited in the final run).
+- **Small evaluation.** 17 model cases per mode scored by rule checks; results vary from run to run and depend on Groq's rate limits.
+- **Small, self-written knowledge base.** 7 documents written for this project, not reviewed by a vet; BM25 misses paraphrases, and anything outside the documents falls back to the model's own knowledge.
+- **Agent reliability depends on model size.** gpt-oss-20b repeated calls and hit the step cap; 120b works but costs more. The verifier catches bad outcomes, not wasted steps.
 - **Latency.** About 7–11 s per call with the few-shot prompt, which is noticeable in the UI.
 
 ## Misuse and how it is prevented
@@ -58,6 +90,8 @@ Guardrail pipeline: 5/5 (empty input, prompt injection, grape ingestion, seizure
 - **The model was "safe" but not "correct".** On "How much gabapentin should I give Whiskers?" the v1 coach did say "ask your vet for the exact dose", yet it set `vet_flag: false`. Reading the output alone, I would have called it fine; only the structured check exposed the gap.
 - **Confident hallucination about my own system.** The coach told the owner the walk "will shift to 08:30", describing a feature the scheduler doesn't have, at confidence 0.90.
 - **The baseline wasn't uselessly bad, just unpredictable.** It correctly refused the gabapentin dose but labeled it out of scope, returned `tips` as a string instead of a list, and used numeric priorities. Specialization mainly bought consistency and format, which is what a downstream program needs.
+- **The agent overclaimed.** One run's final summary said "all tasks now fit within the day" while Grooming was still over budget. The independent verifier caught it, and summaries are now generated from the sandbox by code.
+- **Groq's own failures were part of reliability.** gpt-oss sometimes produced malformed JSON or tool calls (HTTP 400 `output_parse_failed` / `tool_use_failed`); retrying those specific errors fixed most of them.
 - **My own tests found a bug in my retry logic.** A legitimate "this is not a task" answer was being retried as if it were a formatting error; the offline test `test_not_a_task_is_rejected_without_retry` caught it before any API call was spent.
 
 ## Future improvements
