@@ -1,4 +1,5 @@
 from datetime import datetime, time
+from html import escape
 from pathlib import Path
 
 import streamlit as st
@@ -18,79 +19,261 @@ st.markdown(
     <style>
         :root {
             --pp-blue: #1F4FD8; --pp-blue-dark: #15389E; --pp-orange: #FF7A1A;
-            --pp-green: #00A86B; --pp-cream: #FFFBF5; --pp-ink: #1B2340; --pp-soft: #EEF3FF;
+            --pp-green: #236B52; --pp-cream: #FFFBF5; --pp-ink: #1B2340; --pp-soft: #E8EEFF;
+            --pp-peach: #FFE6D3; --pp-lilac: #F0E6FA; --pp-mint: #E1F2E9;
+            --pp-clay: 9px 12px 24px rgba(77, 66, 107, .10),
+                inset -5px -5px 10px rgba(87, 75, 111, .07),
+                inset 5px 5px 10px rgba(255, 255, 255, .85);
+            --pp-small-clay: 4px 5px 10px rgba(77, 66, 107, .12),
+                inset -3px -3px 6px rgba(62, 68, 117, .09),
+                inset 3px 3px 6px rgba(255, 255, 255, .8);
         }
         html, body, [class*="css"], .stMarkdown, .stButton button, input, textarea, select, label {
             font-family: 'Nunito', system-ui, sans-serif !important;
         }
-        .block-container { max-width: 1280px; padding-top: 1.5rem; }
-        h1, h2, h3 { font-weight: 900 !important; letter-spacing: -0.02em; color: var(--pp-ink); }
-
-        /* Hero banner */
-        .pp-hero {
-            position: relative; overflow: hidden; border-radius: 28px; padding: 2.2rem 2.4rem;
-            background: linear-gradient(120deg, var(--pp-blue) 0%, #3D6BF0 55%, #5B8CFF 100%);
-            color: #fff; box-shadow: 0 14px 36px rgba(31,79,216,.25); margin-bottom: 1.4rem;
+        [data-testid="stAppViewContainer"] {
+            background: radial-gradient(ellipse at 95% 5%, #F1EDFF 0, transparent 42%), var(--pp-cream);
         }
-        .pp-hero h1 { color: #fff !important; font-size: 2.4rem; margin: 0 0 .35rem 0; line-height: 1.1; }
-        .pp-hero p { margin: 0; font-size: 1.08rem; opacity: .95; font-weight: 600; }
-        .pp-hero .pp-paws { position: absolute; right: 1.6rem; top: 50%; transform: translateY(-50%) rotate(-12deg);
-            font-size: 6.5rem; opacity: .18; pointer-events: none; }
-        .pp-pill { display: inline-block; margin-top: 1rem; padding: .4rem .95rem; border-radius: 999px;
-            font-size: .85rem; font-weight: 800; }
-        .ai-on { background: #fff; color: var(--pp-green); }
-        .ai-off { background: rgba(255,255,255,.25); color: #fff; }
+        [data-testid="stHeader"] { background: transparent; }
+        .block-container { max-width: 1280px; padding-top: 2rem; padding-bottom: 3rem; }
+        h1, h2, h3 { font-weight: 900 !important; letter-spacing: -0.02em; color: var(--pp-ink); }
+        [data-testid="stCaptionContainer"] { color: #5A6482; }
 
-        /* Buttons: rounded, bold, friendly */
+        /* A soft blue clay stage, with the little crew peeking over its edge. */
+        .pp-hero {
+            position: relative; isolation: isolate; overflow: hidden; border-radius: 32px;
+            padding: 2rem 2.2rem; margin-bottom: 1rem; min-height: 268px;
+            background: linear-gradient(125deg, #E5EDFF 0%, #CDDDFF 55%, #ADC6F7 100%);
+            border: 1px solid #FFFFFFB3; color: var(--pp-ink);
+            box-shadow: 12px 14px 28px rgba(53, 81, 144, .16),
+                inset -7px -7px 15px rgba(66, 96, 165, .13), inset 7px 7px 15px #FFFFFFB3;
+        }
+        .pp-hero-copy { position: relative; z-index: 1; width: 63%; }
+        .pp-eyebrow { display: block; color: var(--pp-blue-dark); font-size: .73rem;
+            letter-spacing: .14em; font-weight: 900; margin-bottom: .7rem; }
+        .pp-hero h1 { color: var(--pp-blue-dark) !important; font-size: clamp(1.85rem, 2.8vw, 2.6rem);
+            padding: 0; margin: 0 0 .8rem; line-height: 1.16; overflow-wrap: anywhere; }
+        .pp-hero p { margin: 0; font-size: 1rem; color: #37476D; line-height: 1.6; font-weight: 600; }
+        .pp-pill { display: inline-flex; margin-top: 1.1rem; padding: .45rem .9rem; border-radius: 999px;
+            font-size: .78rem; font-weight: 800; box-shadow: var(--pp-small-clay); overflow-wrap: anywhere; }
+        .ai-on { background: var(--pp-mint); color: var(--pp-green); }
+        .ai-off { background: #F5F7FF; color: #3D4E77; }
+        .pp-hero-art { position: absolute; width: 38%; height: 235px; right: .4rem; bottom: -12px;
+            pointer-events: none; }
+        .pp-hero-art::before { content: ""; position: absolute; inset: 45px 5px -60px;
+            border-radius: 50%; background: #FFFFFF45; box-shadow: inset 4px 5px 12px #FFFFFF70; }
+        .pp-hero-art .pp-animal { position: absolute; width: 47%; height: auto;
+            filter: drop-shadow(3px 9px 5px rgba(42, 61, 101, .15)); }
+        .pp-hero-art .pp-dog { left: -3%; bottom: 0; transform: rotate(-9deg); z-index: 2; }
+        .pp-hero-art .pp-cat { left: 27%; bottom: 20px; transform: rotate(5deg); }
+        .pp-hero-art .pp-rabbit { right: -3%; bottom: -3px; transform: rotate(10deg); z-index: 3; }
+
+        /* Raised controls compress when pressed; focus remains visible. */
         .stButton > button, .stFormSubmitButton > button {
-            border-radius: 999px !important; font-weight: 800 !important; padding: .55rem 1.3rem !important;
-            border: 2px solid var(--pp-blue) !important; transition: transform .08s ease, box-shadow .15s ease;
+            border-radius: 24px !important; font-weight: 800 !important; padding: .65rem 1.25rem !important;
+            min-height: 46px; background: #E7EEFF; color: var(--pp-blue-dark);
+            border: 1px solid #FFFFFFB3 !important; box-shadow: var(--pp-small-clay);
+            transition: transform .14s ease, box-shadow .14s ease, background .14s ease;
         }
         .stButton > button[kind="primary"], .stFormSubmitButton > button {
-            background: var(--pp-orange) !important; border-color: var(--pp-orange) !important; color: #fff !important;
+            background: linear-gradient(145deg, #FFD1A6, #FFAD68) !important; color: #63300F !important;
+            box-shadow: 5px 6px 12px #B9682526, inset -4px -4px 8px #CA671B26, inset 4px 4px 8px #FFFFFF99;
         }
-        .stButton > button:hover, .stFormSubmitButton > button:hover {
-            transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,122,26,.3);
+        .stButton > button:hover:not(:disabled), .stFormSubmitButton > button:hover:not(:disabled) {
+            transform: translateY(-2px); border-color: #8DA5E6 !important; color: var(--pp-blue-dark);
+        }
+        .stButton > button:active:not(:disabled), .stFormSubmitButton > button:active:not(:disabled) {
+            transform: translateY(2px); box-shadow: 2px 2px 4px #4D426B1A,
+                inset 3px 3px 6px #59436826, inset -2px -2px 5px #FFFFFF99;
+        }
+        .stButton > button:focus-visible, .stFormSubmitButton > button:focus-visible,
+        .stTabs [data-baseweb="tab"]:focus-visible { outline: 3px solid var(--pp-blue); outline-offset: 3px; }
+        .stButton > button:disabled, .stFormSubmitButton > button:disabled {
+            opacity: .5; box-shadow: none; transform: none; cursor: not-allowed;
         }
 
-        /* Cards */
-        div[data-testid="stVerticalBlockBorderWrapper"] {
-            border-radius: 20px !important; border: 1px solid #E6ECFA !important; background: #fff;
-            box-shadow: 0 4px 14px rgba(27,35,64,.06);
+        /* Bordered containers in both older and newer Streamlit layouts. */
+        div[data-testid="stVerticalBlockBorderWrapper"],
+        div[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] > [data-testid="stMetric"]) {
+            border-radius: 28px !important; border: 1px solid #FFFFFFCC !important;
+            background: #FFFCF8; box-shadow: var(--pp-clay);
         }
-        div[data-testid="stMetricValue"] { color: var(--pp-blue); font-weight: 900; }
+        div[data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] > [data-testid="stMetric"]) {
+            padding: 1.25rem !important; height: 100%;
+        }
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(1) [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] > [data-testid="stMetric"]) { background: var(--pp-peach); }
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(2) [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] > [data-testid="stMetric"]) { background: var(--pp-soft); }
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(3) [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] > [data-testid="stMetric"]) { background: var(--pp-mint); }
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:nth-child(4) [data-testid="stVerticalBlock"]:has(> [data-testid="stElementContainer"] > [data-testid="stMetric"]) { background: var(--pp-lilac); }
+        div[data-testid="stMetricValue"] { color: var(--pp-blue-dark); font-weight: 900; font-size: 2rem; }
         div[data-testid="stMetricLabel"] p { font-weight: 800; text-transform: uppercase; font-size: .78rem;
-            letter-spacing: .06em; color: #5A6482; }
+            letter-spacing: .045em; color: #505B78; white-space: normal; }
 
-        /* Tabs as pills */
-        .stTabs [data-baseweb="tab-list"] { gap: .5rem; border-bottom: none; }
+        /* Give pill shadows room inside the horizontal tab scroller. */
+        .stTabs [data-baseweb="tab-list"] { gap: .65rem; border-bottom: none; padding: .65rem .3rem 1rem; }
         .stTabs [data-baseweb="tab"] {
-            background: var(--pp-soft); border-radius: 999px; padding: .55rem 1.2rem; font-weight: 800;
-            color: var(--pp-blue-dark); border: none;
+            background: #EEF1FD; border-radius: 24px; padding: .65rem 1.1rem; min-height: 46px;
+            font-weight: 800; color: var(--pp-blue-dark); border: 1px solid #FFFFFFB3;
+            box-shadow: var(--pp-small-clay); transition: transform .14s ease, box-shadow .14s ease;
         }
-        .stTabs [aria-selected="true"] { background: var(--pp-blue) !important; color: #fff !important; }
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            background: linear-gradient(145deg, #3F6EE3, var(--pp-blue)) !important; color: #fff !important;
+            box-shadow: 4px 6px 12px #1F4FD82B, inset -3px -3px 7px #102D8A55, inset 3px 3px 6px #FFFFFF55;
+        }
+        .stTabs [data-baseweb="tab"]:active {
+            transform: translateY(2px); box-shadow: inset 2px 3px 6px #1B234026;
+        }
         .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] { display: none; }
 
-        /* Sidebar */
-        section[data-testid="stSidebar"] { background: #FFF1E3; border-right: none; }
-        section[data-testid="stSidebar"] h1 { color: var(--pp-orange) !important; }
-        .pp-pet { display: flex; align-items: center; gap: .7rem; background: #fff; border-radius: 16px;
-            padding: .6rem .8rem; margin-bottom: .5rem; box-shadow: 0 2px 8px rgba(27,35,64,.06); }
-        .pp-pet .pp-avatar { font-size: 1.6rem; background: var(--pp-soft); border-radius: 50%;
-            width: 2.6rem; height: 2.6rem; display: flex; align-items: center; justify-content: center; }
-        .pp-pet b { display: block; color: var(--pp-ink); }
-        .pp-pet span { font-size: .82rem; color: #5A6482; }
+        section[data-testid="stSidebar"] { background: #FFF2E5; border-right: 1px solid #FFFFFF;
+            box-shadow: 6px 0 22px #73533B08; }
+        section[data-testid="stSidebar"] h1 { color: var(--pp-blue-dark) !important; }
+        [data-testid="stForm"] { border-radius: 28px; border: 1px solid #FFFFFFB3;
+            background: #FFFCF880; box-shadow: inset 3px 3px 9px #FFFFFFB3, inset -3px -3px 9px #9B70440A; }
+        .pp-pet { display: flex; align-items: center; gap: .8rem; background: #F5F3FF; border-radius: 24px;
+            padding: .75rem; margin-bottom: .75rem; border: 1px solid #FFFFFFB3; box-shadow: var(--pp-clay); }
+        .pp-pet-dog { background: var(--pp-peach); }
+        .pp-pet-cat { background: var(--pp-lilac); }
+        .pp-pet-rabbit { background: var(--pp-mint); }
+        .pp-avatar { flex: 0 0 58px; width: 58px; height: 62px; display: flex;
+            align-items: center; justify-content: center; border-radius: 22px; background: #FFFFFF70;
+            box-shadow: var(--pp-small-clay); }
+        .pp-avatar svg { width: 58px; height: 65px; }
+        .pp-pet-copy { min-width: 0; overflow-wrap: anywhere; }
+        .pp-pet b { display: block; color: var(--pp-ink); font-size: 1rem; }
+        .pp-pet span { font-size: .82rem; color: #505B78; }
 
-        /* Inputs and alerts */
-        .stTextInput input, .stNumberInput input, div[data-baseweb="select"] > div {
-            border-radius: 14px !important; }
-        div[data-testid="stAlert"] { border-radius: 16px; }
+        /* Recessed clay fields keep their native input and keyboard behavior. */
+        [data-testid="stTextInput"] [data-baseweb="input"],
+        [data-testid="stNumberInputContainer"], [data-testid="stTextArea"] [data-baseweb="textarea"],
+        div[data-baseweb="select"] > div, [data-testid="stTimeInput"] [data-baseweb="input"] {
+            border-radius: 24px !important; background: #F4F5FD !important;
+            border: 1px solid #D7DFF2 !important;
+            box-shadow: inset 4px 4px 7px #6D79951A, inset -4px -4px 7px #FFFFFF, 2px 3px 5px #FFFFFF99;
+            min-height: 46px;
+        }
+        .stTextInput input, .stNumberInput input, .stTextArea textarea,
+        [data-testid="stTimeInput"] input { background: transparent !important; color: var(--pp-ink); }
+        [data-baseweb="input"] > div { background: transparent; }
+        [data-testid="stNumberInputContainer"] button { background: #E8EEFF; color: var(--pp-blue-dark); }
+        [data-testid="stTextInput"] [data-baseweb="input"]:focus-within,
+        [data-testid="stNumberInputContainer"]:focus-within,
+        [data-testid="stTextArea"] [data-baseweb="textarea"]:focus-within,
+        div[data-baseweb="select"] > div:focus-within,
+        [data-testid="stTimeInput"] [data-baseweb="input"]:focus-within {
+            border-color: var(--pp-blue) !important; outline: 2px solid #1F4FD840; outline-offset: 2px;
+        }
+        div[data-testid="stAlert"] { border-radius: 24px; box-shadow: var(--pp-clay); }
+        div[data-testid="stAlert"] > div { border-radius: 24px; }
+        .pp-empty { display: flex; gap: 1.3rem; align-items: center; padding: 1.25rem 1.6rem;
+            margin: .25rem 0 1rem; border-radius: 28px; background: #F2F5FF;
+            border: 1px solid #FFFFFFCC; box-shadow: var(--pp-clay); }
+        .pp-empty svg { flex: 0 0 92px; width: 92px; height: 104px; }
+        .pp-empty h3 { margin: 0 0 .35rem; padding: 0; font-size: 1.2rem; }
+        .pp-empty p { color: #505B78; margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+        @media (max-width: 1100px) {
+            .pp-hero { padding: 1.75rem; }
+            .pp-hero-copy { width: 65%; }
+            .pp-hero-art { width: 35%; bottom: -4px; }
+        }
+        @media (max-width: 640px) {
+            .block-container { padding: 1rem 1rem 2rem; }
+            .pp-hero { padding: 1.5rem; border-radius: 28px; min-height: 0; }
+            .pp-hero-copy { width: 100%; }
+            .pp-hero h1 { font-size: 1.9rem; }
+            .pp-hero p { font-size: .94rem; }
+            .pp-hero-art { position: relative; width: 210px; height: 125px;
+                margin: .75rem 0 -2.3rem auto; right: -1rem; bottom: 0; }
+            .pp-hero-art::before { inset: 20px 5px -35px; }
+            .pp-hero-art .pp-cat { bottom: 8px; }
+            .stTabs [data-baseweb="tab"] { padding: .6rem .8rem; white-space: nowrap; }
+            .pp-empty { padding: 1rem; gap: .85rem; align-items: flex-start; }
+            .pp-empty svg { flex-basis: 64px; width: 64px; height: 78px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .stButton > button, .stFormSubmitButton > button, .stTabs [data-baseweb="tab"] {
+                transition: none; transform: none !important;
+            }
+        }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-AVATAR = {"dog": "🐶", "cat": "🐱", "rabbit": "🐰"}
+def animal_svg(species, instance):
+    """Original clay critters. Each placement gets unique SVG paint-server IDs."""
+    species = species if species in {"dog", "cat", "rabbit"} else "other"
+    light, shade, accent = {
+        "dog": ("#FFF0D9", "#EFB27D", "#CB8554"),
+        "cat": ("#F8EDFF", "#C6A6E3", "#A984C6"),
+        "rabbit": ("#F4FFF7", "#A9D6BF", "#7EB59E"),
+        "other": ("#EEF3FF", "#A8BDEC", "#7895D3"),
+    }[species]
+    paint = f"pp-{instance}-{species}"
+    coat, detail, cream = (f"url(#{paint}-{part})" for part in ("coat", "detail", "cream"))
+    defs = f'''<defs>
+    <radialGradient id="{paint}-coat" cx="30%" cy="20%" r="85%">
+    <stop stop-color="{light}"/><stop offset=".65" stop-color="{shade}"/><stop offset="1" stop-color="{accent}"/>
+    </radialGradient>
+    <linearGradient id="{paint}-detail" x1="0" y1="0" x2="1" y2="1">
+    <stop stop-color="{shade}"/><stop offset="1" stop-color="{accent}"/></linearGradient>
+    <radialGradient id="{paint}-cream" cx="35%" cy="20%" r="85%">
+    <stop stop-color="#FFFEF9"/><stop offset="1" stop-color="#F1DCC7"/></radialGradient>
+    </defs>'''
+    if species == "other":
+        shapes = f'''<g fill="{coat}" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="2">
+        <ellipse cx="45" cy="68" rx="15" ry="21" transform="rotate(-25 45 68)"/>
+        <ellipse cx="76" cy="51" rx="15" ry="22" transform="rotate(-8 76 51)"/>
+        <ellipse cx="108" cy="60" rx="15" ry="21" transform="rotate(20 108 60)"/>
+        <ellipse cx="129" cy="87" rx="13" ry="18" transform="rotate(35 129 87)"/>
+        <path d="M40 126C40 110 54 103 63 90C74 74 91 79 100 94C107 106 123 113 120 130C116 150 95 139 81 139C65 139 41 149 40 126Z"/>
+        </g>'''
+    else:
+        ears = {
+            "dog": f'''<ellipse cx="35" cy="87" rx="23" ry="42" fill="{detail}" transform="rotate(17 35 87)"/>
+            <ellipse cx="125" cy="87" rx="23" ry="42" fill="{detail}" transform="rotate(-17 125 87)"/>
+            <path d="M24 68Q18 90 25 105" fill="none" stroke="#FFE2BD" stroke-width="5" stroke-linecap="round" opacity=".65"/>''',
+            "cat": f'''<path d="M32 86L28 39Q28 28 39 34L66 56M94 56L121 34Q132 28 132 40L128 86" fill="{coat}" stroke="{accent}" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M38 65L37 44L56 59M104 59L123 44L122 65" fill="#F3B3C1" stroke="#F3B3C1" stroke-width="5" stroke-linejoin="round"/>''',
+            "rabbit": f'''<ellipse cx="57" cy="49" rx="18" ry="44" fill="{coat}" transform="rotate(-13 57 49)"/>
+            <ellipse cx="104" cy="48" rx="18" ry="45" fill="{coat}" transform="rotate(13 104 48)"/>
+            <ellipse cx="57" cy="45" rx="8" ry="28" fill="#F0B9BD" transform="rotate(-13 57 45)"/>
+            <ellipse cx="105" cy="44" rx="8" ry="29" fill="#F0B9BD" transform="rotate(13 105 44)"/>''',
+        }[species]
+        extras = {
+            "dog": '<path d="M72 120Q80 117 88 120L86 130Q80 137 74 130Z" fill="#EF9D9F"/><path d="M80 123V129" stroke="#C36D7B" stroke-width="2" stroke-linecap="round"/>',
+            "cat": f'<path d="M70 61L74 73M82 59V71M94 61L90 73" stroke="{accent}" stroke-width="4" stroke-linecap="round" opacity=".6"/><path d="M44 113L25 108M44 120L24 121M116 113L135 108M116 120L136 121" stroke="#8C729C" stroke-width="2" stroke-linecap="round"/>',
+            "rabbit": '<rect x="73" y="120" width="14" height="12" rx="4" fill="#FFFEFA"/><path d="M80 122V130" stroke="#CFD9CA" stroke-width="1.5"/>',
+        }[species]
+        shapes = f'''<ellipse cx="80" cy="169" rx="51" ry="7" fill="#39466A" opacity=".10"/>
+        <ellipse cx="80" cy="147" rx="39" ry="28" fill="{coat}"/>
+        <ellipse cx="80" cy="151" rx="24" ry="20" fill="{cream}"/>
+        {ears}
+        <rect x="32" y="60" width="96" height="86" rx="40" fill="{coat}"/>
+        <path d="M46 85Q52 69 70 69" fill="none" stroke="{light}" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+        <ellipse cx="80" cy="119" rx="26" ry="19" fill="{cream}"/>
+        <ellipse cx="47" cy="113" rx="10" ry="7" fill="#EC9C9E" opacity=".65"/>
+        <ellipse cx="113" cy="113" rx="10" ry="7" fill="#EC9C9E" opacity=".65"/>
+        <g fill="#3E3443"><ellipse cx="61" cy="101" rx="4.5" ry="6"/><ellipse cx="99" cy="101" rx="4.5" ry="6"/></g>
+        <g fill="#FFFFFF"><circle cx="60" cy="99" r="1.5"/><circle cx="98" cy="99" r="1.5"/></g>
+        {extras}
+        <path d="M75 110Q80 107 85 110Q86 114 80 117Q74 114 75 110" fill="#72505B"/>
+        <path d="M80 117V120M80 120Q74 126 70 120M80 120Q86 126 90 120" fill="none" stroke="#72505B" stroke-width="2" stroke-linecap="round"/>
+        <path d="M56 144Q80 152 104 144" fill="none" stroke="{'#6D92DF' if species == 'dog' else '#ECAA7D'}" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="80" cy="149" r="5" fill="#FFE3A2"/>
+        <ellipse cx="48" cy="158" rx="17" ry="12" fill="{coat}"/>
+        <ellipse cx="112" cy="158" rx="17" ry="12" fill="{coat}"/>
+        <path d="M42 158V162M49 159V163M106 159V163M113 158V162" stroke="{accent}" stroke-width="1.5" stroke-linecap="round" opacity=".6"/>'''
+    return (f'<svg class="pp-animal pp-{species}" xmlns="http://www.w3.org/2000/svg" '
+            f'viewBox="0 0 160 180" aria-hidden="true" focusable="false">{defs}{shapes}</svg>').replace("\n", "")
+
+
+def animal_empty_state(title, message, species, instance):
+    st.markdown(
+        f'<div class="pp-empty">{animal_svg(species, instance)}'
+        f'<div><h3>{escape(title)}</h3><p>{escape(message)}</p></div></div>',
+        unsafe_allow_html=True,
+    )
 
 
 def rows(tasks):
@@ -142,10 +325,13 @@ with st.sidebar:
 
     if owner.pets:
         st.subheader("Your pets")
-        for pet in owner.pets:
+        for pet_index, pet in enumerate(owner.pets):
+            avatar_species = pet.species if pet.species in {"dog", "cat", "rabbit"} else "other"
             st.markdown(
-                f'<div class="pp-pet"><div class="pp-avatar">{AVATAR.get(pet.species, "🐾")}</div>'
-                f'<div><b>{pet.name}</b><span>{pet.species.capitalize()} · {pet.age} yr</span></div></div>',
+                f'<div class="pp-pet pp-pet-{avatar_species}"><div class="pp-avatar">'
+                f'{animal_svg(avatar_species, f"sidebar-{pet_index}")}</div>'
+                f'<div class="pp-pet-copy"><b>{escape(pet.name)}</b>'
+                f'<span>{escape(pet.species.capitalize())} · {pet.age} yr</span></div></div>',
                 unsafe_allow_html=True,
             )
 
@@ -153,10 +339,14 @@ owner.save(DATA_FILE)  # persist owner settings and any pet changes
 
 greeting = f"Hi {owner.name}! " if owner.name else ""
 st.markdown(
-    f'''<div class="pp-hero"><div class="pp-paws">🐾</div>
-    <h1>{greeting}Let's take great care of your crew.</h1>
+    f'''<div class="pp-hero"><div class="pp-hero-copy">
+    <span class="pp-eyebrow">LITTLE ROUTINES. HAPPY PETS.</span>
+    <h1>{escape(greeting)}Let's take great care of your crew.</h1>
     <p>{datetime.now():%A, %B %d} · Walks, meals, meds and play, planned around your day.</p>
     <span class="pp-pill {"ai-on" if ai_enabled else "ai-off"}">{"● PawPal AI is on" if ai_enabled else "○ AI off: set GROQ_API_KEY"}</span>
+    </div><div class="pp-hero-art" aria-hidden="true">
+    {animal_svg("dog", "hero")}{animal_svg("cat", "hero")}{animal_svg("rabbit", "hero")}
+    </div>
     </div>''',
     unsafe_allow_html=True,
 )
@@ -190,14 +380,14 @@ with conflict_metric.container(border=True):
 today_tab, add_tab, coach_tab, fix_tab = st.tabs(["📅 Today", "➕ Add task", "🩺 Care Coach", "🛠️ Fix my day"])
 
 if not owner.pets:
-    for tab, message in (
-        (today_tab, "Welcome to PawPal+! Add your first pet in the sidebar to start planning their care."),
-        (add_tab, "Add a pet in the sidebar, then create a task here."),
-        (coach_tab, "Add a pet in the sidebar so the Care Coach can tailor its advice."),
-        (fix_tab, "Add a pet and some tasks to get help with your schedule."),
+    for tab, message, species, instance in (
+        (today_tab, "Welcome to PawPal+! Add your first pet in the sidebar to start planning their care.", "dog", "welcome"),
+        (add_tab, "Add a pet in the sidebar, then create a task here.", "cat", "add"),
+        (coach_tab, "Add a pet in the sidebar so the Care Coach can tailor its advice.", "rabbit", "coach"),
+        (fix_tab, "Add a pet and some tasks to get help with your schedule.", "dog", "fix"),
     ):
         with tab:
-            st.info(message)
+            animal_empty_state("Add your first pet", message, species, instance)
     st.stop()
 
 with today_tab:
@@ -217,7 +407,11 @@ with today_tab:
     if shown:
         st.dataframe(rows(shown), use_container_width=True, hide_index=True)
     else:
-        st.info("No tasks match. Adjust the filters or head to Add task to schedule some care.")
+        animal_empty_state(
+            "A little room for care",
+            "No tasks match. Adjust the filters or head to Add task to schedule some care.",
+            "rabbit", "no-tasks",
+        )
 
     for warning in conflict_warnings:
         st.warning(f"Schedule conflict: {warning}. Consider moving one of them.")
