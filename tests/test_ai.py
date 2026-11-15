@@ -158,3 +158,42 @@ def test_vet_flag_adds_note():
 def test_review_falls_back_to_rule_based_explanation():
     result = PawPalAssistant(household(), FakeClient(LLMError("down")), now=NOW).review_day()
     assert result.kind == "fallback" and "Scheduled 0 task(s)" in result.message
+
+
+def test_groq_client_retries_malformed_generation_then_succeeds():
+    from types import SimpleNamespace
+
+    from pawpal_ai.llm import GroqJSONClient
+
+    class FakeCompletions:
+        def __init__(self):
+            self.n = 0
+
+        def create(self, **kwargs):
+            self.n += 1
+            if self.n == 1:
+                raise RuntimeError("Error code: 400 - {'code': 'output_parse_failed'}")
+            msg = SimpleNamespace(content='{"ok": true}')
+            return SimpleNamespace(choices=[SimpleNamespace(message=msg)], usage=None)
+
+    client = GroqJSONClient.__new__(GroqJSONClient)
+    client.model = "fake"
+    completions = FakeCompletions()
+    client._client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    assert client.complete_json([{"role": "user", "content": "hi"}]) == {"ok": True}
+    assert completions.n == 2
+
+
+def test_groq_client_does_not_retry_other_errors():
+    from types import SimpleNamespace
+
+    from pawpal_ai.llm import GroqJSONClient
+
+    def boom(**kwargs):
+        raise RuntimeError("Error code: 401 - invalid api key")
+
+    client = GroqJSONClient.__new__(GroqJSONClient)
+    client.model = "fake"
+    client._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=boom)))
+    with pytest.raises(LLMError):
+        client.complete_json([])
