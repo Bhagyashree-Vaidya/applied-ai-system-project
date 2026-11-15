@@ -4,6 +4,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from pawpal_ai import PawPalAssistant
 from pawpal_system import Owner, Pet, Scheduler, Task
 
 DATA_FILE = Path(__file__).parent / "data.json"
@@ -56,6 +57,34 @@ with st.form("add_task", clear_on_submit=True):
         pet.add_task(Task(description, due, int(duration), priority, frequency))
         owner.save(DATA_FILE)
         st.success(f"Added '{description}' for {target}.")
+
+st.subheader("🤖 Add a task in plain English")
+ai = PawPalAssistant(owner)
+with st.form("ai_task", clear_on_submit=True):
+    request = st.text_input("Describe the task", placeholder="Whiskers needs her meds at 7:30pm every day")
+    if st.form_submit_button("Ask PawPal AI") and request:
+        result = ai.propose_task(request)
+        if result.kind == "task":
+            st.session_state.proposal = result.proposal
+        elif result.kind == "emergency":
+            st.error(result.message)
+        else:
+            st.warning(result.message)
+
+if proposal := st.session_state.get("proposal"):
+    st.info(f"Proposed: {proposal.describe()}")
+    if proposal.needs_confirmation:
+        st.caption("Low confidence - please check the details before scheduling.")
+    c1, c2 = st.columns(2)
+    if c1.button("✅ Schedule it"):
+        for warning in ai.accept(proposal):
+            st.warning(f"Schedule conflict: {warning}")
+        owner.save(DATA_FILE)
+        del st.session_state.proposal
+        st.success("Scheduled!")
+    if c2.button("✖️ Discard"):
+        del st.session_state.proposal
+        st.rerun()
 
 
 def rows(tasks):
@@ -110,3 +139,22 @@ if st.button("Generate schedule"):
         st.success(scheduler.explain_plan(plan))
     else:
         st.info("No pending tasks for today.")
+
+st.divider()
+st.subheader("🩺 Care Coach")
+question = st.text_input("Optional question about today's care", placeholder="Is Biscuit getting enough exercise?")
+if st.button("Review my day"):
+    with st.spinner("Asking the PawPal Care Coach..."):
+        result = PawPalAssistant(owner).review_day(question)
+    if result.kind == "emergency" or (result.advice and result.advice.get("vet_flag")):
+        st.error(result.message)
+    elif result.kind == "advice":
+        st.success(result.message)
+    else:
+        st.info(result.message)
+    for tip in (result.advice or {}).get("tips", []):
+        st.markdown(f"- {tip}")
+    if result.advice and "confidence" in result.advice:
+        st.caption(f"Model confidence: {result.advice['confidence']:.2f}")
+    for note in result.notes:
+        st.caption(note)
