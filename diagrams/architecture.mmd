@@ -1,0 +1,31 @@
+flowchart TD
+    U(["Pet owner"]) -->|"plain-English task or question"| UI["Streamlit app.py / CLI pawpal_ai_cli.py"]
+    UI --> IG{"Input guardrails: empty, too long, prompt injection"}
+    IG -->|"blocked"| R1["Rejected with reason"]
+    IG -->|"ok"| EM{"Emergency detector: toxins, seizure, collapse"}
+    EM -->|"emergency"| R2["Contact-your-vet message (model never called)"]
+    EM -->|"ok"| SCH[("PawPal+ Scheduler - pawpal_system.py")]
+    SCH -->|"today's plan, skipped tasks, conflicts, pets"| PB["Prompt builder - specialist.py"]
+    FS[("Few-shot dataset - data/fewshot_examples.json")] --> PB
+    PB -->|"system rules + few-shot examples + context"| LLM[["Groq LLM - openai/gpt-oss-20b, JSON mode"]]
+    LLM --> OV{"Output validation: schema, real pet, valid time, no medication doses, max 3 tips"}
+    OV -->|"invalid"| RETRY["Retry once with error feedback"]
+    RETRY --> LLM
+    OV -->|"still invalid or API down"| FB["Rule-based fallback - Scheduler.explain_plan"]
+    OV -->|"valid task"| HIL{"Confidence at least 0.7?"}
+    HIL -->|"no"| HUMAN["Owner confirms or discards (human-in-the-loop)"]
+    HIL -->|"yes"| ADD["Task added to pet"]
+    HUMAN -->|"confirm"| ADD
+    ADD --> SCH
+    OV -->|"valid advice"| OUT["Summary + tips + vet flag + confidence shown to owner"]
+    IG -.-> LOG[("logs/pawpal_ai.log")]
+    LLM -.-> LOG
+    OV -.-> LOG
+    subgraph Testing
+        T1["pytest - 37 offline tests with a fake model client"]
+        T2["eval/run_eval.py - specialized vs baseline on fixed cases"]
+    end
+    T1 -.->|"checks"| OV
+    T1 -.->|"checks"| SCH
+    T2 -.->|"scores"| LLM
+    T2 --> REP["assets/eval_results.md"]
