@@ -1,6 +1,6 @@
 # 🐾 PawPal AI — a specialized care coach for busy pet owners
 
-> **▶️ App:** run locally with `streamlit run app.py` → <http://localhost:8501> · **Live demo:** _add your Streamlit Community Cloud link here after deploying_
+> **▶️ Live app: <https://applied-ai-system-project-pawpal.streamlit.app/>** · Run locally with `streamlit run app.py` → <http://localhost:8501>
 
 PawPal AI turns PawPal+, a rule-based pet-care scheduler, into an applied AI system. Owners can type tasks in plain English ("Whiskers needs her kidney meds at 7:30pm every day") and get a daily review from a **specialized Care Coach** that knows their real schedule, their pets' species and ages, and when to say "call your vet". It runs on Groq (`openai/gpt-oss-20b`) and is wrapped in guardrails, human confirmation, logging, offline tests and an evaluation harness.
 

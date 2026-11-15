@@ -14,18 +14,83 @@ DATA_FILE = Path(__file__).parent / "data.json"
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="wide")
 st.markdown(
     """
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        .block-container { max-width: 1440px; padding-top: 2rem; }
-        .ai-status {
-            display: inline-block; padding: .35rem .8rem; border-radius: 999px;
-            font-size: .85rem; font-weight: 600; margin-top: .75rem;
+        :root {
+            --pp-blue: #1F4FD8; --pp-blue-dark: #15389E; --pp-orange: #FF7A1A;
+            --pp-green: #00A86B; --pp-cream: #FFFBF5; --pp-ink: #1B2340; --pp-soft: #EEF3FF;
         }
-        .ai-on { background: #dcfce7; color: #166534; }
-        .ai-off { background: #e2e8f0; color: #334155; }
+        html, body, [class*="css"], .stMarkdown, .stButton button, input, textarea, select, label {
+            font-family: 'Nunito', system-ui, sans-serif !important;
+        }
+        .block-container { max-width: 1280px; padding-top: 1.5rem; }
+        h1, h2, h3 { font-weight: 900 !important; letter-spacing: -0.02em; color: var(--pp-ink); }
+
+        /* Hero banner */
+        .pp-hero {
+            position: relative; overflow: hidden; border-radius: 28px; padding: 2.2rem 2.4rem;
+            background: linear-gradient(120deg, var(--pp-blue) 0%, #3D6BF0 55%, #5B8CFF 100%);
+            color: #fff; box-shadow: 0 14px 36px rgba(31,79,216,.25); margin-bottom: 1.4rem;
+        }
+        .pp-hero h1 { color: #fff !important; font-size: 2.4rem; margin: 0 0 .35rem 0; line-height: 1.1; }
+        .pp-hero p { margin: 0; font-size: 1.08rem; opacity: .95; font-weight: 600; }
+        .pp-hero .pp-paws { position: absolute; right: 1.6rem; top: 50%; transform: translateY(-50%) rotate(-12deg);
+            font-size: 6.5rem; opacity: .18; pointer-events: none; }
+        .pp-pill { display: inline-block; margin-top: 1rem; padding: .4rem .95rem; border-radius: 999px;
+            font-size: .85rem; font-weight: 800; }
+        .ai-on { background: #fff; color: var(--pp-green); }
+        .ai-off { background: rgba(255,255,255,.25); color: #fff; }
+
+        /* Buttons: rounded, bold, friendly */
+        .stButton > button, .stFormSubmitButton > button {
+            border-radius: 999px !important; font-weight: 800 !important; padding: .55rem 1.3rem !important;
+            border: 2px solid var(--pp-blue) !important; transition: transform .08s ease, box-shadow .15s ease;
+        }
+        .stButton > button[kind="primary"], .stFormSubmitButton > button {
+            background: var(--pp-orange) !important; border-color: var(--pp-orange) !important; color: #fff !important;
+        }
+        .stButton > button:hover, .stFormSubmitButton > button:hover {
+            transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255,122,26,.3);
+        }
+
+        /* Cards */
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+            border-radius: 20px !important; border: 1px solid #E6ECFA !important; background: #fff;
+            box-shadow: 0 4px 14px rgba(27,35,64,.06);
+        }
+        div[data-testid="stMetricValue"] { color: var(--pp-blue); font-weight: 900; }
+        div[data-testid="stMetricLabel"] p { font-weight: 800; text-transform: uppercase; font-size: .78rem;
+            letter-spacing: .06em; color: #5A6482; }
+
+        /* Tabs as pills */
+        .stTabs [data-baseweb="tab-list"] { gap: .5rem; border-bottom: none; }
+        .stTabs [data-baseweb="tab"] {
+            background: var(--pp-soft); border-radius: 999px; padding: .55rem 1.2rem; font-weight: 800;
+            color: var(--pp-blue-dark); border: none;
+        }
+        .stTabs [aria-selected="true"] { background: var(--pp-blue) !important; color: #fff !important; }
+        .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] { display: none; }
+
+        /* Sidebar */
+        section[data-testid="stSidebar"] { background: #FFF1E3; border-right: none; }
+        section[data-testid="stSidebar"] h1 { color: var(--pp-orange) !important; }
+        .pp-pet { display: flex; align-items: center; gap: .7rem; background: #fff; border-radius: 16px;
+            padding: .6rem .8rem; margin-bottom: .5rem; box-shadow: 0 2px 8px rgba(27,35,64,.06); }
+        .pp-pet .pp-avatar { font-size: 1.6rem; background: var(--pp-soft); border-radius: 50%;
+            width: 2.6rem; height: 2.6rem; display: flex; align-items: center; justify-content: center; }
+        .pp-pet b { display: block; color: var(--pp-ink); }
+        .pp-pet span { font-size: .82rem; color: #5A6482; }
+
+        /* Inputs and alerts */
+        .stTextInput input, .stNumberInput input, div[data-baseweb="select"] > div {
+            border-radius: 14px !important; }
+        div[data-testid="stAlert"] { border-radius: 16px; }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+AVATAR = {"dog": "🐶", "cat": "🐱", "rabbit": "🐰"}
 
 
 def rows(tasks):
@@ -65,7 +130,7 @@ with st.sidebar:
     st.subheader("Add a pet")
     with st.form("add_pet", clear_on_submit=True):
         pet_name = st.text_input("Pet name", placeholder="e.g. Biscuit")
-        species = st.selectbox("Species", ["dog", "cat", "other"])
+        species = st.selectbox("Species", ["dog", "cat", "rabbit", "other"])
         age = st.number_input("Age", 0, 40, 1)
         if st.form_submit_button("Add pet", use_container_width=True):
             if pet_name.strip():
@@ -78,23 +143,23 @@ with st.sidebar:
     if owner.pets:
         st.subheader("Your pets")
         for pet in owner.pets:
-            st.write(f"{'🐕' if pet.species == 'dog' else '🐈' if pet.species == 'cat' else '🐾'} {pet.name}")
-            st.caption(f"{pet.species.capitalize()} · Age {pet.age}")
+            st.markdown(
+                f'<div class="pp-pet"><div class="pp-avatar">{AVATAR.get(pet.species, "🐾")}</div>'
+                f'<div><b>{pet.name}</b><span>{pet.species.capitalize()} · {pet.age} yr</span></div></div>',
+                unsafe_allow_html=True,
+            )
 
 owner.save(DATA_FILE)  # persist owner settings and any pet changes
 
-heading, ai_status = st.columns([4, 1])
-with heading:
-    st.title("Your care dashboard")
-    st.caption(f"{datetime.now():%A, %B %d} · A plan for every paw.")
-with ai_status:
-    st.markdown(
-        f'<span class="ai-status {"ai-on" if ai_enabled else "ai-off"}">'
-        f'{"● AI on" if ai_enabled else "○ AI off"}</span>',
-        unsafe_allow_html=True,
-    )
-    if not ai_enabled:
-        st.caption("AI unavailable. Set GROQ_API_KEY to enable AI features.")
+greeting = f"Hi {owner.name}! " if owner.name else ""
+st.markdown(
+    f'''<div class="pp-hero"><div class="pp-paws">🐾</div>
+    <h1>{greeting}Let's take great care of your crew.</h1>
+    <p>{datetime.now():%A, %B %d} · Walks, meals, meds and play, planned around your day.</p>
+    <span class="pp-pill {"ai-on" if ai_enabled else "ai-off"}">{"● PawPal AI is on" if ai_enabled else "○ AI off: set GROQ_API_KEY"}</span>
+    </div>''',
+    unsafe_allow_html=True,
+)
 
 if "flash" in st.session_state:
     st.success(st.session_state.pop("flash"))
@@ -122,7 +187,7 @@ with conflict_metric.container(border=True):
     st.metric("Conflicts", len(conflict_warnings))
     st.caption("Pending task overlaps · all dates")
 
-today_tab, add_tab, coach_tab, fix_tab = st.tabs(["Today", "Add task", "Care Coach", "Fix my day"])
+today_tab, add_tab, coach_tab, fix_tab = st.tabs(["📅 Today", "➕ Add task", "🩺 Care Coach", "🛠️ Fix my day"])
 
 if not owner.pets:
     for tab, message in (
