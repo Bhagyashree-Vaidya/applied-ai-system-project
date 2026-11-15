@@ -1,31 +1,52 @@
 flowchart TD
-    U(["Pet owner"]) -->|"plain-English task or question"| UI["Streamlit app.py / CLI pawpal_ai_cli.py"]
+    U(["Pet owner"]) -->|"plain-English task, question, or Fix my day"| UI["Streamlit app.py / CLI pawpal_ai_cli.py"]
     UI --> IG{"Input guardrails: empty, too long, prompt injection"}
     IG -->|"blocked"| R1["Rejected with reason"]
     IG -->|"ok"| EM{"Emergency detector: toxins, seizure, collapse"}
     EM -->|"emergency"| R2["Contact-your-vet message (model never called)"]
     EM -->|"ok"| SCH[("PawPal+ Scheduler - pawpal_system.py")]
-    SCH -->|"today's plan, skipped tasks, conflicts, pets"| PB["Prompt builder - specialist.py"]
-    FS[("Few-shot dataset - data/fewshot_examples.json")] --> PB
-    PB -->|"system rules + few-shot examples + context"| LLM[["Groq LLM - openai/gpt-oss-20b, JSON mode"]]
-    LLM --> OV{"Output validation: schema, real pet, valid time, no medication doses, max 3 tips"}
-    OV -->|"invalid"| RETRY["Retry once with error feedback"]
-    RETRY --> LLM
+
+    subgraph Coach["Task parser and Care Coach - assistant.py"]
+        SCH -->|"today's plan, skipped tasks, conflicts, pets"| PB["Prompt builder - specialist.py"]
+        KB[("Knowledge base - knowledge/*.md")] --> RET["BM25 retriever with species filter - retriever.py"]
+        RET -->|"top-3 care notes with ids"| PB
+        FS[("Few-shot dataset - data/fewshot_examples.json")] --> PB
+        PB -->|"rules + few-shot + context + notes"| LLM[["Groq gpt-oss-20b, JSON mode"]]
+        LLM --> OV{"Output validation: schema, real pet, valid time, no doses, max 3 tips, only retrieved citations"}
+        OV -->|"invalid"| RETRY["Retry once with error feedback"]
+        RETRY --> LLM
+    end
+
     OV -->|"still invalid or API down"| FB["Rule-based fallback - Scheduler.explain_plan"]
     OV -->|"valid task"| HIL{"Confidence at least 0.7?"}
-    HIL -->|"no"| HUMAN["Owner confirms or discards (human-in-the-loop)"]
+    HIL -->|"no"| HUMAN["Owner confirms or discards"]
     HIL -->|"yes"| ADD["Task added to pet"]
     HUMAN -->|"confirm"| ADD
     ADD --> SCH
-    OV -->|"valid advice"| OUT["Summary + tips + vet flag + confidence shown to owner"]
+    OV -->|"valid advice"| OUT["Summary + tips + cited notes + vet flag + confidence"]
+
+    subgraph Agent["Fix-my-day agent - agent.py"]
+        SCH -->|"deep copy"| SB[("Sandbox schedule")]
+        AL[["Groq gpt-oss-120b, native tool calls"]] -->|"list_tasks, find_conflicts, find_next_slot, move_task, search_care_notes"| SB
+        SB -->|"observation"| AL
+        AL -->|"finish or 10-step cap"| VER{"Independent verification: conflicts before/after, budget, med moves"}
+    end
+    RET -.->|"search_care_notes"| AL
+    VER --> APPROVE{"Owner approves moves?"}
+    APPROVE -->|"yes"| SCH
+    APPROVE -->|"no"| DISCARD["Changes discarded"]
+    VER --> TRACE[("assets/agent_traces/*.md, linked from ai_interactions.md")]
+
     IG -.-> LOG[("logs/pawpal_ai.log")]
     LLM -.-> LOG
-    OV -.-> LOG
+    AL -.-> LOG
+
     subgraph Testing
-        T1["pytest - 37 offline tests with a fake model client"]
-        T2["eval/run_eval.py - specialized vs baseline on fixed cases"]
+        T1["pytest - 53 offline tests with fake model clients"]
+        T2["eval/run_eval.py - RAG vs no-RAG vs baseline on fixed cases"]
     end
     T1 -.->|"checks"| OV
-    T1 -.->|"checks"| SCH
+    T1 -.->|"checks"| VER
+    T1 -.->|"checks"| RET
     T2 -.->|"scores"| LLM
     T2 --> REP["assets/eval_results.md"]
