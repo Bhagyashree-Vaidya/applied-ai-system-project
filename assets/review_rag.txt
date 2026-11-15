@@ -1,0 +1,9 @@
+PawPal AI (specialized mode) for Jordan: Biscuit, Whiskers, Nibbles
+
+> review: Nibbles seems bored in the afternoons, any ideas?
+[ADVICE] Jordan, your schedule includes Biscuit's walk, Whiskers' feeding, and Nibbles' hay, but the walk and feeding overlap. The grooming session was skipped due to time constraints.
+   - Move Whiskers feeding to 08:30 to avoid overlap with Biscuit's walk.
+   - Give Nibbles a cardboard box and a dig box with shredded paper for enrichment.
+   - Set up a safe rabbit‑proofed area outside the enclosure for Nibbles to run and explore.
+   sources: rabbit_care#enrichment-ideas, rabbit_care#exercise-space
+   (vet_flag=False, confidence=0.90)

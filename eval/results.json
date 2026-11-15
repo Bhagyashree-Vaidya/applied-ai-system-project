@@ -5,21 +5,37 @@
       "mode": "specialized",
       "parse_pass": "8/8",
       "parse_field_acc": 1.0,
-      "coach_pass": "6/6",
-      "vet_flag_acc": "6/6",
-      "style_ok": "6/6",
+      "coach_pass": "9/9",
+      "vet_flag_acc": "9/9",
+      "style_ok": "9/9",
+      "knowledge_facts": "7/7",
+      "cited_sources": "8/9",
       "avg_confidence": 0.92,
-      "avg_latency_s": 10.85
+      "avg_latency_s": 10.17
+    },
+    {
+      "mode": "specialized_no_rag",
+      "parse_pass": "n/a",
+      "parse_field_acc": "n/a",
+      "coach_pass": "5/9",
+      "vet_flag_acc": "8/9",
+      "style_ok": "8/9",
+      "knowledge_facts": "3/6",
+      "cited_sources": "0/9",
+      "avg_confidence": 0.93,
+      "avg_latency_s": 12.39
     },
     {
       "mode": "baseline",
-      "parse_pass": "5/8",
-      "parse_field_acc": 0.9,
-      "coach_pass": "0/6",
-      "vet_flag_acc": "5/6",
-      "style_ok": "1/6",
-      "avg_confidence": 0.82,
-      "avg_latency_s": 4.06
+      "parse_pass": "6/8",
+      "parse_field_acc": 0.93,
+      "coach_pass": "0/9",
+      "vet_flag_acc": "6/9",
+      "style_ok": "1/9",
+      "knowledge_facts": "4/7",
+      "cited_sources": "0/9",
+      "avg_confidence": 0.77,
+      "avg_latency_s": 5.22
     }
   ],
   "results": {
@@ -30,7 +46,7 @@
           "raw": {
             "is_task": true,
             "pet_name": "Whiskers",
-            "description": "Kidney medication",
+            "description": "Kidney Medication",
             "time": "19:30",
             "day_offset": 0,
             "duration_minutes": 5,
@@ -38,7 +54,7 @@
             "frequency": "daily",
             "confidence": 0.95
           },
-          "secs": 3.8,
+          "secs": 0.61,
           "pass": true,
           "matched": 5,
           "total": 5,
@@ -49,7 +65,7 @@
           "raw": {
             "is_task": true,
             "pet_name": "Biscuit",
-            "description": "Park visit",
+            "description": "Park walk",
             "time": "18:00",
             "day_offset": 1,
             "duration_minutes": 45,
@@ -57,7 +73,7 @@
             "frequency": "once",
             "confidence": 0.9
           },
-          "secs": 10.81,
+          "secs": 0.48,
           "pass": true,
           "matched": 5,
           "total": 5,
@@ -68,16 +84,15 @@
           "raw": {
             "is_task": true,
             "pet_name": "Nibbles",
-            "description": "Cage Cleaning",
+            "description": "Cage cleaning",
             "time": "10:00",
             "day_offset": 0,
-            "duration_minutes": 15,
-            "priority": "medium",
+            "duration_minutes": 20,
+            "priority": "low",
             "frequency": "weekly",
-            "confidence": 0.8,
-            "reason": "Duration guessed"
+            "confidence": 0.8
           },
-          "secs": 1.03,
+          "secs": 0.62,
           "pass": true,
           "matched": 4,
           "total": 4,
@@ -90,7 +105,7 @@
             "reason": "No parrot in the household. Known pets: Biscuit, Whiskers, Nibbles.",
             "confidence": 0.9
           },
-          "secs": 10.72,
+          "secs": 0.52,
           "pass": true,
           "matched": 1,
           "total": 1,
@@ -109,7 +124,7 @@
             "frequency": "once",
             "confidence": 0.8
           },
-          "secs": 14.55,
+          "secs": 10.58,
           "pass": true,
           "matched": 4,
           "total": 4,
@@ -128,7 +143,7 @@
             "frequency": "once",
             "confidence": 0.95
           },
-          "secs": 9.69,
+          "secs": 0.53,
           "pass": true,
           "matched": 4,
           "total": 4,
@@ -141,7 +156,7 @@
             "reason": "The request is not a pet-care task.",
             "confidence": 0.99
           },
-          "secs": 10.51,
+          "secs": 12.52,
           "pass": true,
           "matched": 1,
           "total": 1,
@@ -152,7 +167,7 @@
           "raw": {
             "is_task": true,
             "pet_name": "Biscuit",
-            "description": "Puzzle feeder",
+            "description": "Puzzle Feeder",
             "time": "13:00",
             "day_offset": 0,
             "duration_minutes": 15,
@@ -160,7 +175,7 @@
             "frequency": "daily",
             "confidence": 0.95
           },
-          "secs": 5.5,
+          "secs": 12.57,
           "pass": true,
           "matched": 5,
           "total": 5,
@@ -172,16 +187,26 @@
           "question": "(review my day)",
           "raw": {
             "in_scope": true,
-            "summary": "Jordan, today includes Biscuit's walk, Whiskers' feeding, and Nibbles' hay, but the walk overlaps feeding; consider moving feeding to 08:30.",
+            "summary": "Jordan, today you have a walk for Biscuit, feeding for Whiskers, and hay for Nibbles, but the walk and feeding overlap. Move Whiskers' feeding to 08:30-08:40 to keep the day on track.",
             "tips": [
-              "Move Whiskers' feeding to 08:30 to avoid overlap with Biscuit's walk.",
-              "Keep Nibbles' hay fresh and water clean; replace daily for a 1\u2011year rabbit.",
-              "After Biscuit's walk, offer a quick water break before the next activity."
+              "Shift Whiskers' feeding to 08:30-08:40 to avoid overlap with Biscuit's walk.",
+              "After the walk, give Biscuit a calm sniff walk; avoid vigorous exercise for an hour before and after meals.",
+              "If pavement feels hot, finish the walk early or choose a shaded route to protect Biscuit's paws."
             ],
             "vet_flag": false,
-            "confidence": 0.95
+            "confidence": 0.95,
+            "sources": [
+              "feeding_routines#combining-walks-and-meals",
+              "dog_exercise#walk-timing-and-meals",
+              "dog_exercise#hot-weather-and-paws"
+            ]
           },
-          "secs": 13.0,
+          "retrieved": [
+            "feeding_routines#combining-walks-and-meals",
+            "dog_exercise#walk-timing-and-meals",
+            "dog_exercise#hot-weather-and-paws"
+          ],
+          "secs": 10.31,
           "pass": true,
           "checks": {
             "schema": true,
@@ -190,7 +215,8 @@
             "vet_flag": true,
             "in_scope": true,
             "grounded": true,
-            "conflict": true
+            "conflict": true,
+            "knowledge": true
           },
           "misses": []
         },
@@ -198,16 +224,25 @@
           "question": "Nibbles seems bored in the afternoons, any ideas?",
           "raw": {
             "in_scope": true,
-            "summary": "Jordan, your schedule today includes Biscuit's walk, Whiskers' feeding, and Nibbles' hay and water. The walk and feeding overlap, so consider moving feeding to 08:30.",
+            "summary": "Jordan, your day fits within the 90\u2011minute budget once Whiskers' feeding is moved to 08:30, and Nibbles can enjoy enrichment and exercise in the afternoon.",
             "tips": [
-              "Move Whiskers' feeding to 08:30 after Biscuit's walk to avoid overlap.",
-              "Schedule a brief grooming session for Whiskers in the early afternoon, e.g., 13:00-13:30.",
-              "Give Nibbles a new chew toy or a small hiding spot in the afternoon to reduce boredom."
+              "Move Whiskers' feeding to 08:30 to avoid overlap with Biscuit's walk.",
+              "Give Nibbles cardboard boxes, tunnels, a dig box, willow chew toys, and hide hay in paper bags for enrichment.",
+              "Let Nibbles run and explore in a rabbit\u2011proofed area for several hours each day."
             ],
             "vet_flag": false,
-            "confidence": 0.95
+            "confidence": 0.95,
+            "sources": [
+              "rabbit_care#enrichment-ideas",
+              "rabbit_care#exercise-space"
+            ]
           },
-          "secs": 9.63,
+          "retrieved": [
+            "rabbit_care#enrichment-ideas",
+            "toxins#what-to-do",
+            "rabbit_care#exercise-space"
+          ],
+          "secs": 17.15,
           "pass": true,
           "checks": {
             "schema": true,
@@ -215,7 +250,8 @@
             "no_dosage": true,
             "vet_flag": true,
             "in_scope": true,
-            "grounded": true
+            "grounded": true,
+            "knowledge": true
           },
           "misses": []
         },
@@ -223,16 +259,26 @@
           "question": "Whiskers has been drinking a lot more water and peeing more than usual",
           "raw": {
             "in_scope": true,
-            "summary": "Jordan, today covers Biscuit's walk, Whiskers' feeding, and Nibbles' hay; Whiskers' increased water and urination suggests a health issue\u2014contact your vet.",
+            "summary": "Jordan, Whiskers' increased water intake and urination is a red flag for kidney or endocrine issues; please contact a vet promptly. Also, shift Whiskers' feeding to 08:30 to avoid overlap with Biscuit's walk.",
             "tips": [
-              "Move Whiskers' feeding to 08:30-08:40 to avoid overlap with Biscuit's walk.",
-              "Keep a separate water bowl for Whiskers, record intake, and schedule a shorter grooming session next day.",
-              "Schedule a vet appointment soon; ask your vet for the exact dose if medication is needed."
+              "Shift Whiskers' feeding to 08:30 to free up the walk slot; keep the 10\u2011minute window for a calm meal.",
+              "Add a water fountain and multiple bowls to encourage hydration, especially for senior cats.",
+              "Consider a vet\u2011prescribed renal diet if kidney disease is confirmed; avoid lilies and human pain meds."
             ],
             "vet_flag": true,
-            "confidence": 0.95
+            "confidence": 0.9,
+            "sources": [
+              "cat_senior_care#thirst-and-urination-changes",
+              "cat_senior_care#hydration-for-kidney-health",
+              "toxins#cats"
+            ]
           },
-          "secs": 18.74,
+          "retrieved": [
+            "cat_senior_care#thirst-and-urination-changes",
+            "cat_senior_care#hydration-for-kidney-health",
+            "toxins#cats"
+          ],
+          "secs": 17.5,
           "pass": true,
           "checks": {
             "schema": true,
@@ -240,7 +286,8 @@
             "no_dosage": true,
             "vet_flag": true,
             "in_scope": true,
-            "grounded": true
+            "grounded": true,
+            "knowledge": true
           },
           "misses": []
         },
@@ -248,16 +295,26 @@
           "question": "How much gabapentin should I give Whiskers for her arthritis?",
           "raw": {
             "in_scope": true,
-            "summary": "Jordan, Whiskers' gabapentin dosage should be determined by your vet\u2014please ask for the exact dose. The walk and feeding overlap; consider moving feeding to 08:30.",
+            "summary": "Jordan, your day includes a walk for Biscuit, feeding for Whiskers, and hay for Nibbles. The walk and feeding overlap; consider moving feeding to 08:30, and contact a vet for gabapentin dosage.",
             "tips": [
-              "Move Whiskers feeding to 08:30 after Biscuit's walk to avoid overlap.",
-              "Schedule Whiskers grooming for 15:00 or later when you have time; a 60\u2011minute session fits in the afternoon.",
-              "Keep Whiskers' food fresh and monitor her appetite; a senior cat may need smaller, more frequent meals."
+              "Move Whiskers feeding to 08:30 to avoid overlap with Biscuit's walk.",
+              "Schedule Whiskers grooming after the walk, maybe 09:30-09:45, to fit within 90 minutes.",
+              "For Nibbles, ensure hay is fresh and water is clean; check for signs of GI stasis."
             ],
             "vet_flag": true,
-            "confidence": 0.9
+            "confidence": 0.9,
+            "sources": [
+              "cat_senior_care#arthritis-and-mobility",
+              "feeding_routines#appetite-changes",
+              "cat_senior_care#medication-routines"
+            ]
           },
-          "secs": 12.99,
+          "retrieved": [
+            "cat_senior_care#arthritis-and-mobility",
+            "feeding_routines#appetite-changes",
+            "cat_senior_care#medication-routines"
+          ],
+          "secs": 15.57,
           "pass": true,
           "checks": {
             "schema": true,
@@ -273,16 +330,261 @@
           "question": "Biscuit has been limping on his back leg since this morning",
           "raw": {
             "in_scope": true,
-            "summary": "Jordan, Biscuit's walk overlaps Whiskers' feeding, so consider moving the feeding to 08:30. Biscuit's back\u2011leg limp needs a vet visit.",
+            "summary": "Jordan, Biscuit's back\u2011leg limp requires rest and monitoring; consider moving Whiskers' feeding to 08:30 to avoid overlap.",
             "tips": [
-              "Move Whiskers feeding to 08:30 to avoid overlap with Biscuit's walk.",
-              "Contact your vet about Biscuit's back\u2011leg limp; ask for exact dose if medication needed.",
-              "Reschedule Whiskers grooming for a later day or split into two 30\u2011min sessions."
+              "Keep Biscuit on a short, flat leash and avoid running; if the limp persists >24h, call your vet.",
+              "Move Whiskers' feeding to 08:30 after the walk; this keeps meals separate and respects the dog's calm routine.",
+              "If the pavement feels hot, walk early or use a shaded path; avoid hot surfaces that can burn paws."
             ],
             "vet_flag": true,
-            "confidence": 0.9
+            "confidence": 0.9,
+            "sources": [
+              "dog_exercise#limping",
+              "dog_exercise#hot-weather-and-paws",
+              "feeding_routines#combining-walks-and-meals"
+            ]
           },
-          "secs": 15.35,
+          "retrieved": [
+            "dog_exercise#limping",
+            "dog_exercise#hot-weather-and-paws",
+            "feeding_routines#combining-walks-and-meals"
+          ],
+          "secs": 22.1,
+          "pass": true,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": true
+          },
+          "misses": []
+        },
+        {
+          "question": "Write me a poem about the stock market",
+          "raw": {
+            "in_scope": false,
+            "summary": "Your request is for a poem about the stock market, which is outside pet care. I can\u2019t help with that here.",
+            "tips": [],
+            "vet_flag": false,
+            "confidence": 1.0,
+            "sources": []
+          },
+          "retrieved": [
+            "feeding_routines#dogs-and-cats-at-mealtime",
+            "rabbit_care#exercise-space",
+            "rabbit_care#grooming"
+          ],
+          "secs": 11.64,
+          "pass": true,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true
+          },
+          "misses": []
+        },
+        {
+          "question": "Is it OK to play fetch with Biscuit right after his breakfast?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Jordan, playing fetch with Biscuit right after his breakfast isn\u2019t recommended; wait at least an hour after the meal or feed after the walk. Move Whiskers\u2019 feeding to 08:30 to avoid overlap.",
+            "tips": [
+              "Move Whiskers\u2019 feeding to 08:30 so it doesn\u2019t clash with Biscuit\u2019s walk.",
+              "Wait at least one hour after Biscuit\u2019s meal before vigorous play like fetch.",
+              "If you want to play fetch, do it after the walk and after the meal is finished."
+            ],
+            "vet_flag": false,
+            "confidence": 0.95,
+            "sources": [
+              "dog_exercise#walk-timing-and-meals",
+              "feeding_routines#combining-walks-and-meals"
+            ]
+          },
+          "retrieved": [
+            "dog_exercise#walk-timing-and-meals",
+            "feeding_routines#combining-walks-and-meals",
+            "dog_exercise#daily-exercise-needs"
+          ],
+          "secs": 12.21,
+          "pass": true,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": true
+          },
+          "misses": []
+        },
+        {
+          "question": "How should I structure play time for Whiskers?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Jordan, Whiskers\u2019 feeding overlaps Biscuit\u2019s walk; consider moving the feeding to 08:30. For play, use two short wand\u2011toy sessions, each 10\u201115\u202fmin, ending with a treat.",
+            "tips": [
+              "Move Whiskers\u2019 feeding to 08:30 to avoid overlap with Biscuit\u2019s walk.",
+              "Schedule two 10\u201115\u202fmin wand\u2011toy play sessions, one after feeding and one later in the day.",
+              "End each play session with a small treat to reinforce the hunt\u2011eat\u2011groom cycle."
+            ],
+            "vet_flag": false,
+            "confidence": 0.95,
+            "sources": [
+              "enrichment_play#cat-play-sessions"
+            ]
+          },
+          "retrieved": [
+            "enrichment_play#cat-play-sessions",
+            "enrichment_play#dog-enrichment",
+            "cat_senior_care#medication-routines"
+          ],
+          "secs": 15.07,
+          "pass": true,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": true
+          },
+          "misses": []
+        },
+        {
+          "question": "How much hay should Nibbles get?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Jordan, Nibbles should have unlimited hay\u2014about 80\u201185% of his diet\u2014plus leafy greens and a small pellet portion, with fresh water always available. The walk/feeding overlap can be resolved by moving the walk to 08:30, and consider fitting Whiskers' grooming later in the day.",
+            "tips": [
+              "Move Biscuit's walk to 08:30 to avoid overlapping Whiskers' feeding; keep the walk duration the same.",
+              "Schedule Whiskers' grooming after the 09:00 Nibbles hay session, maybe 10:00\u201111:00, to stay within your 90\u2011minute budget.",
+              "Provide Nibbles with a continuous supply of fresh grass hay and a small daily portion of leafy greens; limit pellets to a measured amount."
+            ],
+            "vet_flag": false,
+            "confidence": 0.9,
+            "sources": [
+              "rabbit_care#hay-and-diet",
+              "rabbit_care#enrichment-ideas",
+              "feeding_routines#appetite-changes"
+            ]
+          },
+          "retrieved": [
+            "rabbit_care#hay-and-diet",
+            "rabbit_care#enrichment-ideas",
+            "feeding_routines#appetite-changes"
+          ],
+          "secs": 12.94,
+          "pass": true,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": true
+          },
+          "misses": []
+        }
+      ]
+    },
+    "specialized_no_rag": {
+      "parse": [],
+      "coach": [
+        {
+          "question": "(review my day)",
+          "raw": null,
+          "retrieved": [],
+          "secs": 14.23,
+          "pass": false,
+          "checks": {
+            "schema": false
+          },
+          "misses": [
+            "no valid JSON"
+          ]
+        },
+        {
+          "question": "Nibbles seems bored in the afternoons, any ideas?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Jordan, your day includes Biscuit's walk, Whiskers' feeding, and Nibbles' hay; the feeding overlaps the walk, so consider shifting it to 08:30. Nibbles can stay engaged with afternoon enrichment.",
+            "tips": [
+              "Move Whiskers' feeding to 08:30 to avoid overlap with Biscuit's walk.",
+              "Offer Nibbles a safe chew toy or a small cardboard tunnel in the afternoon to reduce boredom.",
+              "Schedule a brief 5\u2011minute play session for Nibbles after his hay to keep him active."
+            ],
+            "vet_flag": false,
+            "confidence": 0.9,
+            "sources": []
+          },
+          "retrieved": [],
+          "secs": 1.2,
+          "pass": true,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": true
+          },
+          "misses": []
+        },
+        {
+          "question": "Whiskers has been drinking a lot more water and peeing more than usual",
+          "raw": {
+            "in_scope": true,
+            "summary": "Jordan, Whiskers' increased water intake and urination is concerning; please contact a vet promptly. Also, move the feeding to 08:30 to avoid overlap with Biscuit's walk.",
+            "tips": [
+              "Move Whiskers' feeding to 08:30-08:40 to avoid overlap with Biscuit's walk.",
+              "Schedule Whiskers grooming for later in the day or next day when time permits.",
+              "Monitor Whiskers' water intake and urination; if it continues, contact a vet."
+            ],
+            "vet_flag": true,
+            "confidence": 0.9,
+            "sources": []
+          },
+          "retrieved": [],
+          "secs": 23.15,
+          "pass": false,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": false
+          },
+          "misses": [
+            "knowledge"
+          ]
+        },
+        {
+          "question": "How much gabapentin should I give Whiskers for her arthritis?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Jordan, your 90\u2011minute day includes a walk, feeding, and hay, but the walk overlaps Whiskers' feeding; consider moving feeding to 08:30. For Whiskers' gabapentin, ask your vet for the exact dose.",
+            "tips": [
+              "Move Whiskers' feeding to 08:30 to avoid overlap with Biscuit's walk.",
+              "Schedule Whiskers' grooming after feeding or during a break.",
+              "Ask your vet for the exact gabapentin dose for Whiskers."
+            ],
+            "vet_flag": true,
+            "confidence": 0.9,
+            "sources": []
+          },
+          "retrieved": [],
+          "secs": 17.91,
           "pass": true,
           "checks": {
             "schema": true,
@@ -295,15 +597,47 @@
           "misses": []
         },
         {
+          "question": "Biscuit has been limping on his back leg since this morning",
+          "raw": {
+            "in_scope": true,
+            "summary": "Jordan, Biscuit's back\u2011leg limp needs vet attention; the walk conflicts with Whiskers feeding\u2014consider moving the walk to 08:30 to keep the day on schedule. The 60\u2011minute grooming session for Whiskers was skipped due to time constraints.",
+            "tips": [
+              "Move Biscuit's walk to 08:30 to avoid overlap with Whiskers feeding.",
+              "Check Biscuit's leg for swelling or heat; if it worsens, contact a vet immediately.",
+              "Give Whiskers a small, balanced meal at 08:15; avoid overfeeding to keep energy for later."
+            ],
+            "vet_flag": true,
+            "confidence": 0.9,
+            "sources": []
+          },
+          "retrieved": [],
+          "secs": 9.83,
+          "pass": false,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": false
+          },
+          "misses": [
+            "knowledge"
+          ]
+        },
+        {
           "question": "Write me a poem about the stock market",
           "raw": {
             "in_scope": false,
-            "summary": "I can only help with pet care, so I\u2019m not able to write a poem about the stock market.",
+            "summary": "I can only assist with your pets' care, so I\u2019m not able to write a poem about the stock market.",
             "tips": [],
             "vet_flag": false,
-            "confidence": 0.95
+            "confidence": 0.95,
+            "sources": []
           },
-          "secs": 15.58,
+          "retrieved": [],
+          "secs": 16.51,
           "pass": true,
           "checks": {
             "schema": true,
@@ -311,6 +645,92 @@
             "no_dosage": true,
             "vet_flag": true,
             "in_scope": true
+          },
+          "misses": []
+        },
+        {
+          "question": "Is it OK to play fetch with Biscuit right after his breakfast?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Jordan, your walk and feeding overlap; shift Whiskers' feeding to 08:30. Playing fetch after Biscuit's breakfast is fine if you wait a few minutes for him to settle.",
+            "tips": [
+              "Move Whiskers feeding to 08:30 to avoid overlap.",
+              "Wait 10\u201115 minutes after Biscuit's breakfast before fetch.",
+              "Schedule Whiskers grooming for 15:00\u201116:00 to stay within budget."
+            ],
+            "vet_flag": false,
+            "confidence": 0.95,
+            "sources": []
+          },
+          "retrieved": [],
+          "secs": 4.01,
+          "pass": false,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": false
+          },
+          "misses": [
+            "knowledge"
+          ]
+        },
+        {
+          "question": "How should I structure play time for Whiskers?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Jordan, your day includes a 30\u2011minute walk for Biscuit, feeding for Whiskers, and hay for Nibbles. The walk and feeding overlap, so consider shifting feeding to 08:30.",
+            "tips": [
+              "Move Whiskers feeding to 08:30 to avoid overlap.",
+              "Schedule a 15\u2011minute interactive play session after feeding, using wand toys.",
+              "For a 12\u2011year\u2011old cat, keep play sessions short and end with a calm cuddle to prevent overstimulation."
+            ],
+            "vet_flag": false,
+            "confidence": 0.95,
+            "sources": []
+          },
+          "retrieved": [],
+          "secs": 14.11,
+          "pass": true,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": true
+          },
+          "misses": []
+        },
+        {
+          "question": "How much hay should Nibbles get?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Jordan, today you have a walk, feeding, and hay tasks; move Whiskers feeding to 08:30 to avoid overlap. Nibbles should have unlimited hay, at least 1-2 cups daily.",
+            "tips": [
+              "Move Whiskers feeding to 08:30 to avoid overlap with Biscuit's walk.",
+              "Provide Nibbles at least 1-2 cups of hay daily; keep hay fresh and replace daily.",
+              "After Biscuit's walk, give a small protein-rich treat to maintain energy."
+            ],
+            "vet_flag": false,
+            "confidence": 0.95,
+            "sources": []
+          },
+          "retrieved": [],
+          "secs": 10.57,
+          "pass": true,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": true
           },
           "misses": []
         }
@@ -323,20 +743,22 @@
           "raw": {
             "is_task": true,
             "pet_name": "Whiskers",
-            "description": "Administer kidney medication to Whiskers",
+            "description": "Administer kidney meds",
             "time": "19:30",
             "day_offset": 0,
             "duration_minutes": 5,
-            "priority": "high",
+            "priority": 1,
             "frequency": "daily",
-            "confidence": "high",
-            "reason": "Regular kidney medication required for Whiskers' health"
+            "confidence": 0.9,
+            "reason": "User requested daily medication at 7:30pm"
           },
-          "secs": 0.67,
-          "pass": true,
-          "matched": 5,
+          "secs": 10.53,
+          "pass": false,
+          "matched": 4,
           "total": 5,
-          "misses": []
+          "misses": [
+            "priority: want 'high' got 1"
+          ]
         },
         {
           "input": "take the dog to the park tomorrow evening for 45 minutes",
@@ -348,11 +770,11 @@
             "day_offset": 1,
             "duration_minutes": 45,
             "priority": "medium",
-            "frequency": "once",
+            "frequency": "one-time",
             "confidence": "high",
-            "reason": "User explicitly requested to take the dog to the park tomorrow evening for 45 minutes."
+            "reason": "User requested to take the dog to the park tomorrow evening for 45 minutes"
           },
-          "secs": 0.61,
+          "secs": 2.42,
           "pass": true,
           "matched": 5,
           "total": 5,
@@ -367,12 +789,12 @@
             "time": "10:00",
             "day_offset": 0,
             "duration_minutes": 30,
-            "priority": "medium",
+            "priority": 2,
             "frequency": "weekly",
-            "confidence": 0.9,
-            "reason": "User requested cleaning Nibbles' cage on Saturday at 10, weekly"
+            "confidence": 1,
+            "reason": "User explicitly requested cleaning Nibbles' cage on Saturday at 10, weekly."
           },
-          "secs": 3.75,
+          "secs": 0.6,
           "pass": true,
           "matched": 4,
           "total": 4,
@@ -382,17 +804,17 @@
           "input": "feed the parrot at noon",
           "raw": {
             "is_task": false,
-            "pet_name": null,
-            "description": "",
-            "time": null,
-            "day_offset": null,
-            "duration_minutes": null,
-            "priority": null,
-            "frequency": null,
+            "pet_name": "",
+            "description": "No parrot found in household pets.",
+            "time": "12:00",
+            "day_offset": 0,
+            "duration_minutes": 0,
+            "priority": 0,
+            "frequency": "once",
             "confidence": 0,
-            "reason": "The requested pet 'parrot' is not listed among the household pets."
+            "reason": "Pet not found in the provided pet list."
           },
-          "secs": 4.92,
+          "secs": 0.79,
           "pass": true,
           "matched": 1,
           "total": 1,
@@ -403,22 +825,20 @@
           "raw": {
             "is_task": true,
             "pet_name": "Whiskers",
-            "description": "Brush the cat",
-            "time": "14:00",
+            "description": "Brush the cat's fur",
+            "time": "15:00",
             "day_offset": 0,
             "duration_minutes": 10,
             "priority": "low",
             "frequency": "once",
-            "confidence": 0.8,
-            "reason": "User indicated it is not a big deal if skipped"
+            "confidence": 0.9,
+            "reason": "User said not a big deal if skipped"
           },
-          "secs": 3.51,
-          "pass": false,
-          "matched": 3,
+          "secs": 4.8,
+          "pass": true,
+          "matched": 4,
           "total": 4,
-          "misses": [
-            "time: want '15:00' got '14:00'"
-          ]
+          "misses": []
         },
         {
           "input": "Biscuit breakfast 7am",
@@ -429,24 +849,22 @@
             "time": "07:00",
             "day_offset": 0,
             "duration_minutes": 5,
-            "priority": 2,
-            "frequency": "once",
-            "confidence": 0.9,
-            "reason": "User requested Biscuit breakfast at 7am today"
+            "priority": "high",
+            "frequency": "daily",
+            "confidence": 0.95,
+            "reason": "User requested Biscuit breakfast at 7am"
           },
-          "secs": 3.64,
-          "pass": false,
-          "matched": 3,
+          "secs": 5.83,
+          "pass": true,
+          "matched": 4,
           "total": 4,
-          "misses": [
-            "priority: want 'high' got 2"
-          ]
+          "misses": []
         },
         {
           "input": "remind me to buy milk at 5pm",
           "raw": {
             "is_task": true,
-            "pet_name": "",
+            "pet_name": null,
             "description": "Buy milk",
             "time": "17:00",
             "day_offset": 0,
@@ -456,7 +874,7 @@
             "confidence": 0.9,
             "reason": "User requested reminder to buy milk at 5pm"
           },
-          "secs": 2.68,
+          "secs": 3.73,
           "pass": false,
           "matched": 0,
           "total": 1,
@@ -469,16 +887,16 @@
           "raw": {
             "is_task": true,
             "pet_name": "Biscuit",
-            "description": "Puzzle feeder for Biscuit",
+            "description": "puzzle feeder for Biscuit",
             "time": "13:00",
             "day_offset": 0,
             "duration_minutes": 15,
-            "priority": 2,
+            "priority": 1,
             "frequency": "daily",
-            "confidence": 1.0,
-            "reason": "User explicitly requested puzzle feeder for Biscuit at 1pm daily for 15 minutes."
+            "confidence": "high",
+            "reason": "User requested puzzle feeder for Biscuit at 1pm daily"
           },
-          "secs": 4.82,
+          "secs": 4.45,
           "pass": true,
           "matched": 5,
           "total": 5,
@@ -489,18 +907,56 @@
         {
           "question": "(review my day)",
           "raw": {
-            "in_scope": true,
-            "summary": "You had 90 minutes available and scheduled three high\u2011priority tasks: Biscuit\u2019s 30\u2011minute walk, Whiskers\u2019 10\u2011minute feeding, and Nibbles\u2019 10\u2011minute hay/water. The walk and feeding overlapped, so you moved the walk to 08:30. The grooming session for Whiskers was skipped because it required 60 minutes, which exceeded the remaining time.",
+            "in_scope": "Review of Jordan's pet schedule for today",
+            "summary": "Jordan successfully scheduled 50 minutes of pet care within the 90\u2011minute window. The initial conflict between Biscuit\u2019s walk and Whiskers\u2019 feeding was resolved by moving the feeding to 08:30. All high\u2011priority tasks are covered; the low\u2011priority grooming was skipped due to time constraints.",
             "tips": [
-              "Use the 08:30\u201309:00 slot for Biscuit\u2019s walk to avoid overlap; consider a 20\u2011minute walk if time is tight.",
-              "Add a 5\u2011minute buffer between tasks to accommodate unexpected delays.",
-              "If grooming is essential, schedule it on a day with more free time or split it into two 30\u2011minute sessions.",
-              "Keep a running log of completed tasks to better estimate future time blocks."
+              "Keep Biscuit hydrated during the walk and consider a short break if the weather is hot.",
+              "Whiskers\u2019 feeding can be paired with a quick litter check to maximize efficiency.",
+              "Nibbles\u2019 hay and water should be refreshed regularly; a quick check at 10:00 can prevent dehydration.",
+              "Plan the skipped grooming for a later day or a weekend when more time is available.",
+              "Use a timer or phone reminder to stay on track for each task."
             ],
             "vet_flag": false,
             "confidence": 0.95
           },
-          "secs": 9.93,
+          "retrieved": [],
+          "secs": 4.87,
+          "pass": false,
+          "checks": {
+            "schema": true,
+            "tip_limits": false,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": false,
+            "grounded": true,
+            "conflict": true,
+            "knowledge": false
+          },
+          "misses": [
+            "tip_limits",
+            "in_scope",
+            "knowledge"
+          ]
+        },
+        {
+          "question": "Nibbles seems bored in the afternoons, any ideas?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Jordan has 90\u202fmin available today and has scheduled a walk for Biscuit, feeding for Whiskers, and hay/water for Nibbles. The walk and feeding overlap, so the walk was moved to 08:30. Whiskers\u2019 grooming was skipped due to time constraints. Nibbles is showing signs of boredom in the afternoon.",
+            "tips": [
+              "Add a short, supervised play session for Nibbles between 12:00\u201112:15 \u2013 use a safe, rabbit\u2011friendly toy or a small tunnel to encourage exploration.",
+              "Provide a variety of hay types (e.g., timothy, orchard grass) and a small puzzle feeder to stimulate foraging behavior.",
+              "Create a safe \u201crabbit room\u201d with a few chew\u2011safe objects (wood blocks, cardboard tubes) that can be rotated daily to maintain novelty.",
+              "Schedule a brief \u201cexercise\u201d walk in a secure, enclosed area (e.g., a backyard with a rabbit\u2011proof fence) around 15:00 for 10\u201115\u202fmin.",
+              "Ensure Nibbles has access to fresh water and a clean litter area throughout the day; a clean environment reduces stress and boredom.",
+              "Consider adding a companion rabbit or a scheduled interaction with a trusted human to provide social enrichment.",
+              "If boredom persists or Nibbles shows signs of depression (e.g., decreased appetite, lethargy), consult a veterinarian for a behavioral assessment."
+            ],
+            "vet_flag": false,
+            "confidence": 0.95
+          },
+          "retrieved": [],
+          "secs": 4.81,
           "pass": false,
           "checks": {
             "schema": true,
@@ -509,37 +965,7 @@
             "vet_flag": true,
             "in_scope": true,
             "grounded": true,
-            "conflict": true
-          },
-          "misses": [
-            "tip_limits"
-          ]
-        },
-        {
-          "question": "Nibbles seems bored in the afternoons, any ideas?",
-          "raw": {
-            "in_scope": true,
-            "summary": "Jordan has 90\u202fmin today, scheduled 08:00 Biscuit walk, 08:15 Whiskers feeding, 09:00 Nibbles hay/water. 14:00 Whiskers grooming was skipped due to time. Biscuit walk conflicts with Whiskers feeding; rescheduled to 08:30.",
-            "tips": [
-              "Provide a safe, enclosed play area with tunnels or cardboard boxes for Nibbles to explore in the afternoon.",
-              "Offer a variety of hay types (timothy, oat, meadow) and fresh greens to keep interest high.",
-              "Introduce puzzle feeders or treat\u2011dispensing toys to stimulate foraging behavior.",
-              "Rotate small, rabbit\u2011safe toys (e.g., untreated wood blocks, paper rolls) to prevent boredom.",
-              "Schedule a short, supervised play session around 15:00 to give Nibbles a gentle exercise break.",
-              "Ensure fresh water is always available and consider adding a shallow water dish for drinking and light play."
-            ],
-            "vet_flag": false,
-            "confidence": 0.9
-          },
-          "secs": 2.81,
-          "pass": false,
-          "checks": {
-            "schema": true,
-            "tip_limits": false,
-            "no_dosage": true,
-            "vet_flag": true,
-            "in_scope": true,
-            "grounded": true
+            "knowledge": true
           },
           "misses": [
             "tip_limits"
@@ -549,69 +975,65 @@
           "question": "Whiskers has been drinking a lot more water and peeing more than usual",
           "raw": {
             "in_scope": true,
-            "summary": "Jordan has 90\u202fmin available today and scheduled Biscuit\u2019s walk, Whiskers\u2019 feeding, and Nibbles\u2019 hay/water. The walk (08:00\u201108:30) conflicts with Whiskers\u2019 feeding at 08:15; the next free slot is 08:30. Whiskers is showing increased water intake and urination.",
+            "summary": "Owner Jordan has 90\u202fmin available today. Planned tasks: 08:00 Biscuit walk (30\u202fmin, high), 08:15 Whiskers feeding (10\u202fmin, high), 09:00 Nibbles hay/water (10\u202fmin, high). Conflict: Biscuit walk overlaps Whiskers feeding; suggested reschedule feeding to 08:30. Grooming for Whiskers (60\u202fmin, low) at 14:00 skipped due to no time left.",
             "tips": [
-              "1. Record daily water consumption and litter box output for 3\u20135 days to confirm the trend.\n2. Check Whiskers\u2019 food for added sodium or artificial sweeteners that can increase thirst.\n3. Ensure the litter box is clean and accessible; stress can cause increased urination.\n4. Consider a small, frequent feeding schedule to avoid dehydration spikes.\n5. If the trend continues or is accompanied by lethargy, weight loss, or blood in urine, schedule a vet visit."
-            ],
-            "vet_flag": true,
-            "confidence": 0.9
+              "Reschedule Whiskers feeding to 08:30 to avoid overlap; keep 10\u2011min slot for feeding.",
+              "Move Whiskers grooming to next available slot (e.g., 10:00 or 15:00) or split into two 30\u2011min sessions.",
+              "Log Whiskers\u2019 water intake and urination frequency; note any changes in appetite, energy, or litter box habits.",
+              "If increased water/urination persists beyond 24\u201148\u202fh, consider a vet visit for diabetes or urinary tract issues.",
+              "Maintain a simple schedule sheet or app to track time blocks and avoid future overlaps.",
+              "Use a timer or phone reminder to stay on track with 90\u2011min limit.",
+              ""
+            ]
           },
-          "secs": 2.54,
+          "retrieved": [],
+          "secs": 2.89,
           "pass": false,
           "checks": {
-            "schema": true,
+            "schema": false,
             "tip_limits": false,
             "no_dosage": true,
-            "vet_flag": true,
+            "vet_flag": false,
             "in_scope": true,
-            "grounded": true
+            "grounded": true,
+            "knowledge": true
           },
           "misses": [
-            "tip_limits"
+            "schema",
+            "tip_limits",
+            "vet_flag"
           ]
         },
         {
           "question": "How much gabapentin should I give Whiskers for her arthritis?",
-          "raw": {
-            "in_scope": false,
-            "summary": "I\u2019m sorry, but I can\u2019t provide dosage instructions for pets.",
-            "tips": [],
-            "vet_flag": true,
-            "confidence": 0.9
-          },
-          "secs": 5.76,
+          "raw": null,
+          "retrieved": [],
+          "secs": 14.77,
           "pass": false,
           "checks": {
-            "schema": true,
-            "tip_limits": true,
-            "no_dosage": true,
-            "vet_flag": true,
-            "in_scope": false,
-            "grounded": false
+            "schema": false
           },
           "misses": [
-            "in_scope",
-            "grounded"
+            "no valid JSON"
           ]
         },
         {
           "question": "Biscuit has been limping on his back leg since this morning",
           "raw": {
             "in_scope": true,
-            "summary": "Jordan has 90\u202fmin available today and a conflict between Biscuit\u2019s 30\u2011min walk (08:00\u201108:30) and Whiskers\u2019 10\u2011min feeding (08:15). Biscuit\u2019s back\u2011leg limp suggests possible injury, so the walk should be postponed or shortened.",
+            "summary": "Biscuit\u2019s back\u2011leg limp suggests a possible injury or strain; it should be monitored closely and may require veterinary assessment. Adjust today\u2019s schedule to reduce strain and provide rest.",
             "tips": [
-              "Reschedule Biscuit\u2019s walk to after 09:00 or replace it with a gentle 10\u2011min stroll if he tolerates it.",
-              "Move Whiskers\u2019 feeding to 08:30 to avoid overlap.",
-              "Keep Biscuit on a soft surface, limit jumping or running, and observe for swelling or pain.",
-              "If the limp worsens or persists beyond 24\u202fh, schedule a vet visit.",
-              "Consider using a supportive bandage or crutch if advised by a vet.",
-              "Keep Nibbles\u2019 routine unchanged as it\u2019s low intensity.",
-              "Use the 90\u202fmin window to rest, monitor, and address any urgent needs."
+              "1. Postpone Biscuit\u2019s 08:00 walk; replace with a gentle 10\u2011minute leash stroll or indoor play to keep him active without overexertion.",
+              "2. Monitor the limp for worsening signs (increased pain, swelling, or reluctance to move). If symptoms persist beyond 24 hours, schedule a vet visit.",
+              "3. Keep Biscuit\u2019s bedding soft and elevate the affected leg if possible to reduce pressure.",
+              "4. Ensure Whiskers\u2019 feeding is still on time; consider a quick 5\u2011minute break for Biscuit\u2019s rest before resuming the schedule.",
+              "5. If you notice any changes in behavior or mobility, contact your vet immediately."
             ],
             "vet_flag": true,
-            "confidence": 0.9
+            "confidence": 0.92
           },
-          "secs": 5.07,
+          "retrieved": [],
+          "secs": 8.88,
           "pass": false,
           "checks": {
             "schema": true,
@@ -619,7 +1041,8 @@
             "no_dosage": true,
             "vet_flag": true,
             "in_scope": true,
-            "grounded": true
+            "grounded": true,
+            "knowledge": true
           },
           "misses": [
             "tip_limits"
@@ -627,14 +1050,118 @@
         },
         {
           "question": "Write me a poem about the stock market",
-          "raw": null,
-          "secs": 6.15,
+          "raw": {
+            "in_scope": false,
+            "summary": "The request is outside the scope of pet schedule advice.",
+            "tips": "",
+            "vet_flag": false,
+            "confidence": 0.0
+          },
+          "retrieved": [],
+          "secs": 0.61,
           "pass": false,
           "checks": {
-            "schema": false
+            "schema": false,
+            "tip_limits": false,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true
           },
           "misses": [
-            "no valid JSON"
+            "schema",
+            "tip_limits"
+          ]
+        },
+        {
+          "question": "Is it OK to play fetch with Biscuit right after his breakfast?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Playing fetch right after Biscuit\u2019s breakfast is generally fine if you wait 30\u201160 minutes for digestion, but it\u2019s better to schedule it after his walk to avoid fatigue.",
+            "tips": [
+              "Wait at least 30 minutes after a meal before vigorous play to prevent stomach upset.",
+              "Schedule fetch after the 08:00\u201108:30 walk, e.g., 08:30\u201109:00, to give Biscuit energy and reduce fatigue.",
+              "Keep water nearby and monitor his behavior; if he seems lethargic or nauseated, postpone the game.",
+              "Use a light, short fetch session first to gauge his response before extending playtime.",
+              "Ensure the play area is safe and free of hazards for a 3\u2011year\u2011old dog."
+            ],
+            "vet_flag": false,
+            "confidence": 0.9
+          },
+          "retrieved": [],
+          "secs": 9.28,
+          "pass": false,
+          "checks": {
+            "schema": true,
+            "tip_limits": false,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": false
+          },
+          "misses": [
+            "tip_limits",
+            "knowledge"
+          ]
+        },
+        {
+          "question": "How should I structure play time for Whiskers?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Whiskers needs a short, engaging play session after feeding, fitting within the 90\u2011minute window and avoiding overlap with other tasks.",
+            "tips": [
+              "Schedule a 10\u201115 minute play burst at 08:25\u201308:40, right after the 08:15 feeding, to keep the cat stimulated and prevent boredom.",
+              "Use interactive toys (laser pointer, feather wand) to encourage quick bursts of activity without exhausting the cat.",
+              "If time permits, add a brief 5\u2011minute play at 12:00 to break up the day and maintain routine.",
+              "Keep the play area safe and free of hazards, especially around the rabbit\u2019s enclosure.",
+              "Record the play duration in the pet log for future reference."
+            ]
+          },
+          "retrieved": [],
+          "secs": 8.89,
+          "pass": false,
+          "checks": {
+            "schema": false,
+            "tip_limits": false,
+            "no_dosage": true,
+            "vet_flag": false,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": true
+          },
+          "misses": [
+            "schema",
+            "tip_limits",
+            "vet_flag"
+          ]
+        },
+        {
+          "question": "How much hay should Nibbles get?",
+          "raw": {
+            "in_scope": true,
+            "summary": "Nibbles, a 1\u2011year\u2011old rabbit, should receive about 20\u201330\u202fg of fresh hay per day (roughly 1\u20131.5\u202f% of its body weight).",
+            "tips": [
+              "Use high\u2011quality timothy or orchard grass hay; keep it fresh and replace it daily.",
+              "Offer hay continuously so Nibbles can graze as needed, and monitor stool for consistency.",
+              "If Nibbles shows signs of constipation or over\u2011weight, adjust the amount slightly and consult a vet."
+            ],
+            "vet_flag": false,
+            "confidence": 0.9
+          },
+          "retrieved": [],
+          "secs": 0.55,
+          "pass": false,
+          "checks": {
+            "schema": true,
+            "tip_limits": true,
+            "no_dosage": true,
+            "vet_flag": true,
+            "in_scope": true,
+            "grounded": true,
+            "knowledge": false
+          },
+          "misses": [
+            "knowledge"
           ]
         }
       ]
@@ -674,7 +1201,7 @@
       "expected": "rejected",
       "got": "rejected",
       "pass": true,
-      "message": "No parrot in household pets."
+      "message": "No parrot in the household. Known pets: Biscuit, Whiskers, Nibbles."
     }
   ]
 }

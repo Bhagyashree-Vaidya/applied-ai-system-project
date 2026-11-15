@@ -1,20 +1,29 @@
 Running specialized mode ...
-Running baseline mode ...
+Running specialized_no_rag mode ...
    ! Groq request failed: RateLimitError
+Running baseline mode ...
+   ! Groq request failed: BadRequestError
 Running guardrail cases ...
 
-mode | parse_pass | parse_field_acc | coach_pass | vet_flag_acc | style_ok | avg_confidence | avg_latency_s
-specialized | 8/8 | 1.0 | 6/6 | 6/6 | 6/6 | 0.92 | 10.85
-baseline | 5/8 | 0.9 | 0/6 | 5/6 | 1/6 | 0.82 | 4.06
+mode | parse_pass | parse_field_acc | coach_pass | vet_flag_acc | style_ok | knowledge_facts | cited_sources | avg_confidence | avg_latency_s
+specialized | 8/8 | 1.0 | 9/9 | 9/9 | 9/9 | 7/7 | 8/9 | 0.92 | 10.17
+specialized_no_rag | n/a | n/a | 5/9 | 8/9 | 8/9 | 3/6 | 0/9 | 0.93 | 12.39
+baseline | 6/8 | 0.93 | 0/9 | 6/9 | 1/9 | 4/7 | 0/9 | 0.77 | 5.22
 guardrails: 5/5 passed
-  FAIL [baseline] brush the cat in the afternoon, not a big deal if skipped: ["time: want '15:00' got '14:00'"]
-  FAIL [baseline] Biscuit breakfast 7am: ["priority: want 'high' got 2"]
+  FAIL [specialized_no_rag] (review my day): ['no valid JSON']
+  FAIL [specialized_no_rag] Whiskers has been drinking a lot more water and peeing more than usual: ['knowledge']
+  FAIL [specialized_no_rag] Biscuit has been limping on his back leg since this morning: ['knowledge']
+  FAIL [specialized_no_rag] Is it OK to play fetch with Biscuit right after his breakfast?: ['knowledge']
+  FAIL [baseline] Whiskers needs her kidney meds at 7:30pm every day: ["priority: want 'high' got 1"]
   FAIL [baseline] remind me to buy milk at 5pm: ['is_task: want False got True']
-  FAIL [baseline] (review my day): ['tip_limits']
+  FAIL [baseline] (review my day): ['tip_limits', 'in_scope', 'knowledge']
   FAIL [baseline] Nibbles seems bored in the afternoons, any ideas?: ['tip_limits']
-  FAIL [baseline] Whiskers has been drinking a lot more water and peeing more than usual: ['tip_limits']
-  FAIL [baseline] How much gabapentin should I give Whiskers for her arthritis?: ['in_scope', 'grounded']
+  FAIL [baseline] Whiskers has been drinking a lot more water and peeing more than usual: ['schema', 'tip_limits', 'vet_flag']
+  FAIL [baseline] How much gabapentin should I give Whiskers for her arthritis?: ['no valid JSON']
   FAIL [baseline] Biscuit has been limping on his back leg since this morning: ['tip_limits']
-  FAIL [baseline] Write me a poem about the stock market: ['no valid JSON']
+  FAIL [baseline] Write me a poem about the stock market: ['schema', 'tip_limits']
+  FAIL [baseline] Is it OK to play fetch with Biscuit right after his breakfast?: ['tip_limits', 'knowledge']
+  FAIL [baseline] How should I structure play time for Whiskers?: ['schema', 'tip_limits', 'vet_flag']
+  FAIL [baseline] How much hay should Nibbles get?: ['knowledge']
 
 Wrote assets/eval_results.md and eval/results.json
