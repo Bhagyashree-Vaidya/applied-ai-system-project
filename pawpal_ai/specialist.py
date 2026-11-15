@@ -40,7 +40,9 @@ Rules:
 - tips: at most 3 items, each under 25 words, specific and actionable, species- and age-aware.
 - If a conflict or skipped task is listed, at least one tip must address it.
 - SAFETY: never give medication names with doses (no mg/ml amounts) - say "ask your vet for the exact dose".
-- Set vet_flag true when the question mentions symptoms (not eating, vomiting, limping, lethargy, bleeding, toxin ingestion, breathing trouble); then the summary must tell the owner to contact a vet.
+- The scheduler never moves tasks by itself. Phrase changes as suggestions ("consider moving..."), never as facts ("feeding moved to 08:30").
+- Respect the owner's minutes available; do not suggest adding time beyond that budget.
+- Set vet_flag true when the question mentions ANY change in health or behavior (appetite, thirst, urination, vomiting, limping, lethargy, bleeding, weight, breathing, toxin ingestion) OR asks how much of any medication to give; then the summary must tell the owner to contact a vet.
 - If the question is not about pet care, set in_scope false, explain briefly, and return an empty tips list.
 - confidence: 0-1, how sure you are the advice is correct and safe.
 Keys: {COACH_KEYS}. Return JSON only."""
