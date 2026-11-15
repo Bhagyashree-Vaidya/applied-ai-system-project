@@ -60,6 +60,15 @@ Guardrail pipeline: 5/5 (empty input, prompt injection, grape ingestion, seizure
 - **The baseline wasn't uselessly bad, just unpredictable.** It correctly refused the gabapentin dose but labeled it out of scope, returned `tips` as a string instead of a list, and used numeric priorities. Specialization mainly bought consistency and format, which is what a downstream program needs.
 - **My own tests found a bug in my retry logic.** A legitimate "this is not a task" answer was being retried as if it were a formatting error; the offline test `test_not_a_task_is_rejected_without_retry` caught it before any API call was spent.
 
+## Future improvements
+
+- **Semantic retrieval.** Replace keyword BM25 with embeddings so paraphrases ("got into the trail mix") match the right note, and use the same retriever as a second-layer emergency check.
+- **A bigger, vet-reviewed knowledge base** with more species (birds, reptiles, small mammals) and region-aware toxin lists; today's 7 documents were written for this project and are not a substitute for professional review.
+- **Calibrated confidence.** Replace the model's self-reported confidence with a score from agreement across 2–3 samples, or from validation results, so the human-confirmation threshold means something.
+- **Advice-quality evaluation** with an LLM-as-judge rubric plus a small human-rated set, instead of only keyword and format checks.
+- **Agent upgrades:** let the agent propose (not apply) budget trade-offs, such as shortening a low-priority task, and remember owner preferences between runs.
+- **Faster responses:** cache the static few-shot prefix (Groq prompt caching) to cut latency.
+
 ## AI collaboration
 
 *(Draft written with Claude Code from this project's history. Revise it in your own words before submitting.)*
