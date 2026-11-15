@@ -5,6 +5,7 @@ from pathlib import Path
 import streamlit as st
 
 from pawpal_ai import PawPalAssistant
+from pawpal_ai.agent import FixMyDayAgent
 from pawpal_system import Owner, Pet, Scheduler, Task
 
 DATA_FILE = Path(__file__).parent / "data.json"
@@ -154,7 +155,43 @@ if st.button("Review my day"):
         st.info(result.message)
     for tip in (result.advice or {}).get("tips", []):
         st.markdown(f"- {tip}")
+    if result.retrieved:
+        with st.expander("Care notes used (retrieved from knowledge/)"):
+            cited = set((result.advice or {}).get("sources", []))
+            for chunk in result.retrieved:
+                st.markdown(f"{'✅' if chunk.id in cited else '▫️'} **{chunk.id}** - {chunk.text}")
     if result.advice and "confidence" in result.advice:
         st.caption(f"Model confidence: {result.advice['confidence']:.2f}")
     for note in result.notes:
         st.caption(note)
+
+st.divider()
+st.subheader("🛠️ Fix my day (agent)")
+st.caption("The agent plans, moves tasks on a copy of your schedule, checks its own work, and waits for your approval.")
+if st.button("Run agent"):
+    assistant = PawPalAssistant(owner)
+    if assistant.client is None:
+        st.info("AI is unavailable; resolve conflicts manually.")
+    else:
+        with st.spinner("Agent is working..."):
+            st.session_state.agent_run = FixMyDayAgent(owner, assistant.client).run(
+                "Fix my day: resolve conflicts and fit skipped important tasks.")
+
+if run := st.session_state.get("agent_run"):
+    for s in run.steps:
+        st.markdown(f"**Step {s['step']}** `{s['action']}` {s['args'] or ''}  \n_{s['thought']}_  \n→ {s['observation']}")
+    (st.success if run.verified else st.warning)(f"{run.summary} (verified: {run.verified})")
+    for p in run.problems:
+        st.caption(f"Check: {p}")
+    if run.moves:
+        st.table([{"Pet": m.pet_name, "Task": m.description, "From": f"{m.old_time:%H:%M}", "To": f"{m.new_time:%H:%M}"}
+                  for m in run.moves])
+        c1, c2 = st.columns(2)
+        if c1.button("✅ Apply changes"):
+            FixMyDayAgent(owner, None).apply(run)
+            owner.save(DATA_FILE)
+            del st.session_state.agent_run
+            st.rerun()
+        if c2.button("✖️ Discard changes"):
+            del st.session_state.agent_run
+            st.rerun()
