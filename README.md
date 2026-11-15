@@ -10,7 +10,7 @@ PawPal AI turns PawPal+, a rule-based pet-care scheduler, into an applied AI sys
 
 | Dashboard (claymorphism UI) | Phone width |
 |---|---|
-| <img src="docs/screenshots/final/dashboard.png" alt="PawPal dashboard with pets, metrics, tasks and conflict warning" width="620"> | <img src="docs/screenshots/final/mobile.png" alt="PawPal on a phone-width screen" width="200"> |
+| <img src="docs/screenshots/final/dashboard.png" alt="PawPal dashboard with pets, metrics, tasks and conflict warning" width="620"> | <img src="docs/screenshots/final/mobile.jpg" alt="PawPal on a phone-width screen" width="200"> |
 
 | Care Coach (RAG, live Groq answer) | Fix my day agent (verified, awaiting approval) |
 |---|---|
