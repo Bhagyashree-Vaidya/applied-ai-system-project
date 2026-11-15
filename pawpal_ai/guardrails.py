@@ -108,8 +108,8 @@ def validate_task(raw: dict, pet_names: list[str]) -> tuple[dict | None, list[st
     }, []
 
 
-def validate_advice(raw: dict) -> tuple[dict | None, list[str]]:
-    """Check coach output; drop unsafe tips. Returns (clean, notes). clean is None if unusable."""
+def validate_advice(raw: dict, valid_sources: set[str] | None = None) -> tuple[dict | None, list[str]]:
+    """Check coach output; drop unsafe tips and invented citations. Returns (clean, notes)."""
     notes = []
     summary = str(raw.get("summary", "")).strip()
     if not summary:
@@ -134,8 +134,17 @@ def validate_advice(raw: dict) -> tuple[dict | None, list[str]]:
         notes.append("Summary contained a medication dose; replaced with a vet referral.")
         summary = "Please ask your vet for the exact medication dose."
 
+    sources = raw.get("sources", [])
+    sources = [str(x) for x in sources] if isinstance(sources, list) else []
+    if valid_sources is not None:
+        invented = [x for x in sources if x not in valid_sources]
+        if invented:
+            notes.append(f"Dropped citation(s) to notes that were not retrieved: {', '.join(invented)}")
+        sources = [x for x in sources if x in valid_sources]
+
     return {
         "in_scope": bool(raw.get("in_scope", True)),
+        "sources": sources,
         "summary": summary,
         "tips": safe_tips,
         "vet_flag": bool(raw.get("vet_flag", False)),

@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from pawpal_ai import guardrails as g
 from pawpal_ai.config import setup_logging
 from pawpal_ai.llm import GroqJSONClient, JSONClient, LLMError
+from pawpal_ai.retriever import Chunk, Retriever
 from pawpal_ai.specialist import coach_messages, parse_messages
 from pawpal_system import Owner, Scheduler, Task
 
@@ -46,6 +47,7 @@ class AssistantResult:
     proposal: TaskProposal | None = None
     advice: dict | None = None
     notes: list[str] = field(default_factory=list)
+    retrieved: list[Chunk] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -56,8 +58,10 @@ class PawPalAssistant:
     """AI layer for PawPal+. `client` is any JSONClient (Groq by default, a fake in tests)."""
 
     def __init__(self, owner: Owner, client: JSONClient | None = None, mode: str = "specialized",
-                 now: datetime | None = None):
+                 now: datetime | None = None, use_rag: bool = True, retriever: Retriever | None = None):
         self.owner = owner
+        self.use_rag = use_rag and mode == "specialized"
+        self._retriever = retriever
         self.scheduler = Scheduler(owner)
         self.mode = mode
         self.now = now or datetime.now().replace(second=0, microsecond=0)
@@ -152,6 +156,30 @@ class PawPalAssistant:
                 f"Planned today: {fmt(plan)}.\nSkipped (no time left): {fmt(skipped)}.\n"
                 f"Conflicts: {'; '.join(self.scheduler.conflict_warnings()) or 'none'}.")
 
+    @property
+    def retriever(self) -> Retriever:
+        if self._retriever is None:
+            self._retriever = Retriever()
+        return self._retriever
+
+    def retrieve(self, question: str, day: datetime | None = None, k: int = 3) -> list[Chunk]:
+        """RAG step: find care notes relevant to the question (or, with no question, to today's tasks)."""
+        species = {p.species for p in self.owner.pets}
+        if question:
+            query = question
+        else:
+            day = day or self.now
+            todays = [t for t in self.scheduler.filter_tasks(completed=False) if t.due_time.date() == day.date()]
+            query = " ".join(t.description for t in todays)
+            if self.scheduler.detect_conflicts():
+                query += " walk meal feeding separate"
+        names = {p.name.lower(): p.species for p in self.owner.pets}
+        mentioned = {sp for name, sp in names.items() if name in query.lower()}
+        query += " " + " ".join(sorted(mentioned or species))
+        hits = self.retriever.search(query, species=mentioned or species, k=k)
+        log.info("retrieved %s", [(c.id, score) for c, score in hits])
+        return [c for c, _ in hits]
+
     def review_day(self, question: str = "", day: datetime | None = None) -> AssistantResult:
         """Explain today's plan with tailored tips, or answer a pet-care question about it."""
         log.info("review_day question=%r", question)
@@ -164,8 +192,12 @@ class PawPalAssistant:
                                        advice={"vet_flag": True, "summary": g.EMERGENCY_MESSAGE, "tips": []})
 
         context = self.schedule_context(day)
+        retrieved = self.retrieve(question, day) if self.use_rag else []
+        notes_text = "\n".join(c.cite() for c in retrieved)
+        valid = {c.id for c in retrieved}
         try:
-            _, clean, notes = self._ask(coach_messages(context, question, self.mode), g.validate_advice, "coach")
+            _, clean, notes = self._ask(coach_messages(context, question, self.mode, notes_text),
+                                        lambda r: g.validate_advice(r, valid), "coach")
         except LLMError as exc:
             plan = self.scheduler.build_daily_plan(day or self.now)
             return AssistantResult("fallback", self.scheduler.explain_plan(plan) + f" (AI unavailable: {exc})")
@@ -174,4 +206,4 @@ class PawPalAssistant:
             return AssistantResult("fallback", self.scheduler.explain_plan(plan), notes=notes)
         if clean["vet_flag"]:
             notes.append("Vet flag raised - PawPal recommends contacting your veterinarian.")
-        return AssistantResult("advice", clean["summary"], advice=clean, notes=notes)
+        return AssistantResult("advice", clean["summary"], advice=clean, notes=notes, retrieved=retrieved)

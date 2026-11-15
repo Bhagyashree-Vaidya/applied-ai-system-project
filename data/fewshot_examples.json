@@ -1,51 +1,142 @@
 {
   "_note": "Synthetic few-shot dataset that specializes the model. Uses pets (Mochi, Pepper, Clover) that never appear in eval/eval_cases.json, so the eval does not leak.",
   "pets": [
-    {"name": "Mochi", "species": "dog", "age": 2},
-    {"name": "Pepper", "species": "cat", "age": 9},
-    {"name": "Clover", "species": "rabbit", "age": 4}
+    {
+      "name": "Mochi",
+      "species": "dog",
+      "age": 2
+    },
+    {
+      "name": "Pepper",
+      "species": "cat",
+      "age": 9
+    },
+    {
+      "name": "Clover",
+      "species": "rabbit",
+      "age": 4
+    }
   ],
   "parse": [
     {
       "input": "walk Mochi at 7am every day for half an hour, it's important",
-      "output": {"is_task": true, "pet_name": "Mochi", "description": "Morning walk", "time": "07:00", "day_offset": 0, "duration_minutes": 30, "priority": "high", "frequency": "daily", "confidence": 0.95}
+      "output": {
+        "is_task": true,
+        "pet_name": "Mochi",
+        "description": "Morning walk",
+        "time": "07:00",
+        "day_offset": 0,
+        "duration_minutes": 30,
+        "priority": "high",
+        "frequency": "daily",
+        "confidence": 0.95
+      }
     },
     {
       "input": "Pepper needs her thyroid pill at 6:30 pm",
-      "output": {"is_task": true, "pet_name": "Pepper", "description": "Thyroid medication", "time": "18:30", "day_offset": 0, "duration_minutes": 5, "priority": "high", "frequency": "daily", "confidence": 0.85}
+      "output": {
+        "is_task": true,
+        "pet_name": "Pepper",
+        "description": "Thyroid medication",
+        "time": "18:30",
+        "day_offset": 0,
+        "duration_minutes": 5,
+        "priority": "high",
+        "frequency": "daily",
+        "confidence": 0.85
+      }
     },
     {
       "input": "brush clover tomorrow afternoon",
-      "output": {"is_task": true, "pet_name": "Clover", "description": "Brushing", "time": "15:00", "day_offset": 1, "duration_minutes": 15, "priority": "low", "frequency": "once", "confidence": 0.6}
+      "output": {
+        "is_task": true,
+        "pet_name": "Clover",
+        "description": "Brushing",
+        "time": "15:00",
+        "day_offset": 1,
+        "duration_minutes": 15,
+        "priority": "low",
+        "frequency": "once",
+        "confidence": 0.6
+      }
     },
     {
       "input": "weekly nail trim for the dog on saturday mornings, 20 min",
-      "output": {"is_task": true, "pet_name": "Mochi", "description": "Nail trim", "time": "09:00", "day_offset": 0, "duration_minutes": 20, "priority": "medium", "frequency": "weekly", "confidence": 0.7}
+      "output": {
+        "is_task": true,
+        "pet_name": "Mochi",
+        "description": "Nail trim",
+        "time": "09:00",
+        "day_offset": 0,
+        "duration_minutes": 20,
+        "priority": "medium",
+        "frequency": "weekly",
+        "confidence": 0.7
+      }
     },
     {
       "input": "play with the hamster at noon",
-      "output": {"is_task": false, "reason": "There is no hamster in this household. Known pets: Mochi, Pepper, Clover.", "confidence": 0.9}
+      "output": {
+        "is_task": false,
+        "reason": "There is no hamster in this household. Known pets: Mochi, Pepper, Clover.",
+        "confidence": 0.9
+      }
     },
     {
       "input": "what's the capital of France?",
-      "output": {"is_task": false, "reason": "That is not a pet-care task, so nothing was scheduled.", "confidence": 0.99}
+      "output": {
+        "is_task": false,
+        "reason": "That is not a pet-care task, so nothing was scheduled.",
+        "confidence": 0.99
+      }
     }
   ],
   "coach": [
     {
       "context": "Owner: Riley (60 min available). Pets: Mochi (dog, 2), Pepper (cat, 9).\nPlanned today: 07:00 Mochi - Morning walk (30 min, high); 18:30 Pepper - Thyroid medication (5 min, high).\nSkipped (no time left): 15:00 Mochi - Fetch session (40 min, low).\nConflicts: none.",
       "question": "",
-      "output": {"in_scope": true, "summary": "Riley, today covers the essentials: Mochi's walk and Pepper's thyroid pill fit in 35 of your 60 minutes. The 40-minute fetch session was skipped because it would go over budget.", "tips": ["Split Mochi's fetch into a 15-minute burst after the walk so a young dog still gets play.", "Give Pepper's pill at the same 18:30 time daily; senior cats on thyroid meds do best with consistency."], "vet_flag": false, "confidence": 0.9}
+      "output": {
+        "in_scope": true,
+        "summary": "Riley, today covers the essentials: Mochi's walk and Pepper's thyroid pill fit in 35 of your 60 minutes. The 40-minute fetch session was skipped because it would go over budget.",
+        "tips": [
+          "Split Mochi's fetch into a 15-minute burst after the walk so a young dog still gets play.",
+          "Give Pepper's pill at the same 18:30 time daily; senior cats on thyroid meds do best with consistency."
+        ],
+        "vet_flag": false,
+        "confidence": 0.9,
+        "sources": []
+      },
+      "notes": "[feeding_routines#combining-walks-and-meals] Combining walks and meals: A common routine is a calm morning walk first, then breakfast after the dog has settled."
     },
     {
       "context": "Owner: Riley (45 min available). Pets: Clover (rabbit, 4).\nPlanned today: 08:00 Clover - Hay refill (5 min, high).\nSkipped (no time left): none.\nConflicts: none.",
       "question": "Clover hasn't eaten or pooped since yesterday, should I just add more hay?",
-      "output": {"in_scope": true, "summary": "A rabbit that has stopped eating and pooping for many hours can be in GI stasis, which is an emergency. Please call your vet or an emergency exotic-animal clinic now rather than waiting on more hay.", "tips": ["Keep Clover warm and quiet while you arrange the vet visit.", "Do not give any medication unless your vet tells you the exact dose."], "vet_flag": true, "confidence": 0.9}
+      "output": {
+        "in_scope": true,
+        "summary": "A rabbit that has stopped eating and pooping for many hours may have GI stasis, which can be fatal. Please call a rabbit-savvy vet or an emergency exotic-animal clinic now rather than waiting on more hay.",
+        "tips": [
+          "Keep Clover warm and quiet while you arrange the vet visit.",
+          "Do not give any medication unless your vet tells you the exact dose."
+        ],
+        "vet_flag": true,
+        "confidence": 0.9,
+        "sources": [
+          "rabbit_care#gi-stasis-is-an-emergency"
+        ]
+      },
+      "notes": "[rabbit_care#gi-stasis-is-an-emergency] GI stasis is an emergency: A rabbit that stops eating or stops producing droppings for around 12 hours may have GI stasis, which can be fatal. Contact a vet experienced with rabbits right away; do not wait to see if it passes."
     },
     {
       "context": "Owner: Riley (90 min available). Pets: Mochi (dog, 2).\nPlanned today: 08:00 Mochi - Morning walk (30 min, high).\nSkipped (no time left): none.\nConflicts: none.",
       "question": "Can you write my history essay?",
-      "output": {"in_scope": false, "summary": "I can only help with Mochi's care and schedule, so I can't write essays.", "tips": [], "vet_flag": false, "confidence": 0.95}
+      "output": {
+        "in_scope": false,
+        "summary": "I can only help with Mochi's care and schedule, so I can't write essays.",
+        "tips": [],
+        "vet_flag": false,
+        "confidence": 0.95,
+        "sources": []
+      }
     }
   ]
 }

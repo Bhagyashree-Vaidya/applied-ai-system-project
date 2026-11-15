@@ -17,7 +17,8 @@ MODES = ("specialized", "baseline")
 
 PARSE_KEYS = ("is_task, pet_name, description, time (HH:MM 24h), day_offset, duration_minutes, "
               "priority, frequency, confidence, reason")
-COACH_KEYS = "in_scope, summary, tips, vet_flag, confidence"
+COACH_KEYS = "in_scope, summary, tips, vet_flag, confidence, sources"
+BASELINE_COACH_KEYS = "in_scope, summary, tips, vet_flag, confidence"
 
 PARSE_SYSTEM = f"""You are PawPal's task parser. Turn one pet-care request into ONE scheduled task as a JSON object.
 Rules:
@@ -44,11 +45,12 @@ Rules:
 - Respect the owner's minutes available; do not suggest adding time beyond that budget.
 - Set vet_flag true when the question mentions ANY change in health or behavior (appetite, thirst, urination, vomiting, limping, lethargy, bleeding, weight, breathing, toxin ingestion) OR asks how much of any medication to give; then the summary must tell the owner to contact a vet.
 - If the question is not about pet care, set in_scope false, explain briefly, and return an empty tips list.
+- CARE NOTES: when care notes are provided, base species-specific facts on them and list the ids you used in sources (e.g. ["rabbit_care#hay-and-diet"]). Never cite an id that was not provided; use [] if you used none.
 - confidence: 0-1, how sure you are the advice is correct and safe.
 Keys: {COACH_KEYS}. Return JSON only."""
 
 BASELINE_PARSE = f"You are a helpful assistant. Convert the request into a task. Respond in JSON with keys: {PARSE_KEYS}."
-BASELINE_COACH = f"You are a helpful assistant. Give advice about this pet schedule. Respond in JSON with keys: {COACH_KEYS}."
+BASELINE_COACH = f"You are a helpful assistant. Give advice about this pet schedule. Respond in JSON with keys: {BASELINE_COACH_KEYS}."
 
 
 @lru_cache(maxsize=1)
@@ -79,18 +81,25 @@ def parse_messages(text: str, pets: list[dict], today: str, mode: str = "special
     return msgs
 
 
-def coach_messages(context: str, question: str = "", mode: str = "specialized") -> list[dict]:
-    """Chat messages asking the model to review a day's plan (and answer an optional question)."""
+def coach_messages(context: str, question: str = "", mode: str = "specialized", notes: str = "") -> list[dict]:
+    """Chat messages asking the model to review a day's plan (and answer an optional question).
+
+    `notes` are retrieved knowledge-base chunks (RAG); only the specialized mode uses them.
+    """
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}")
-    user = lambda ctx, q: f"{ctx}\nQuestion: {q or '(none - just review my day)'}"
+
+    def user(ctx: str, q: str, n: str = "") -> str:
+        block = f"\nCare notes:\n{n}" if n else ""
+        return f"{ctx}{block}\nQuestion: {q or '(none - just review my day)'}"
+
     if mode == "baseline":
         return [{"role": "system", "content": BASELINE_COACH},
                 {"role": "user", "content": user(context, question)}]
 
     msgs = [{"role": "system", "content": COACH_SYSTEM}]
     for ex in load_fewshot()["coach"]:
-        msgs.append({"role": "user", "content": user(ex["context"], ex["question"])})
+        msgs.append({"role": "user", "content": user(ex["context"], ex["question"], ex.get("notes", ""))})
         msgs.append({"role": "assistant", "content": json.dumps(ex["output"])})
-    msgs.append({"role": "user", "content": user(context, question)})
+    msgs.append({"role": "user", "content": user(context, question, notes)})
     return msgs
